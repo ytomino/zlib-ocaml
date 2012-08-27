@@ -22,6 +22,12 @@ type flush =
 	| Z_FINISH (* 4 *)
 	| Z_BLOCK;; (* 5 *)
 
+(* suppress warnings *)
+ignore Z_PARTIAL_FLUSH;;
+ignore Z_SYNC_FLUSH;;
+ignore Z_FULL_FLUSH;;
+ignore Z_BLOCK;;
+
 type z_stream_s;;
 
 external avail_in: z_stream_s -> int = "mlzlib_avail_in";;
