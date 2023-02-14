@@ -56,14 +56,17 @@ let gz = (
 	Buffer.contents buf
 );;
 
-let f = open_out_bin "test-out.gz" in
+let out_gz_name = Filename.temp_file "test-out" ".gz" in
+let out_txt_name = Filename.temp_file "test-out" ".txt" in
+let f = open_out_bin out_gz_name in
 output_string f gz;
 close_out f;
-ignore (Sys.command "gzip -c -d test-out.gz > test-out.txt");
-let unzip = read_file "test-out.txt" in
+ignore (
+	Sys.command ("gzip -c -d '" ^ out_gz_name ^ "' > '" ^ out_txt_name ^ "'"));
+let unzip = read_file out_txt_name in
 assert (unzip = src);
-Sys.remove "test-out.gz";
-Sys.remove "test-out.txt";;
+Sys.remove out_gz_name;
+Sys.remove out_txt_name;;
 
 (* report *)
 
