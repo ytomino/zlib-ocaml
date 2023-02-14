@@ -12,6 +12,38 @@ Depending tools and libraries
 zlib
  http://www.zlib.net/
 
+How to make
+-----------
+
+Install
++++++++
+
+::
+
+ make install PREFIX=/usr/local
+
+Specify your preferred directory to ``PREFIX``.
+The libraries would be installed into ``$PREFIX/lib/ocaml`` (default is
+``ocamlc -where``).
+
+If zlib is not installed in the default search path, specify the directory
+containing zlib to ``WITH_ZLIB``.
+``$WITH_ZLIB/include`` and ``$WITH_ZLIB/lib`` would be used.
+
+Uninstall
++++++++++
+
+::
+
+ make uninstall PREFIX=/usr/local
+
+Build examples
+++++++++++++++
+
+::
+
+ make -C examples
+
 License
 -------
 
