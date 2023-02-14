@@ -1,9 +1,9 @@
-type level = int;;
+type level = int
 
-val z_no_compression: int;;
-val z_best_speed: int;;
-val z_best_compression: int;;
-val z_default_compression: int;;
+val z_no_compression: int
+val z_best_speed: int
+val z_best_compression: int
+val z_default_compression: int
 
 type strategy =
 	| Z_DEFAULT_STRATEGY
@@ -12,19 +12,19 @@ type strategy =
 	| Z_RLE
 	| Z_FIXED;;
 
-type header = [`default | `raw | `gzip];;
+type header = [`default | `raw | `gzip]
 
-type writer;;
+type writer
 
 val deflate_init: ?level: int -> ?strategy: strategy ->
 	?header: header ->
-	(string -> int -> int -> unit) -> writer;;
-val deflate: writer -> string -> int -> int -> unit;;
-val deflate_end: writer -> unit;;
+	(string -> int -> int -> unit) -> writer
+val deflate: writer -> string -> int -> int -> unit
+val deflate_end: writer -> unit
 
-type reader;;
+type reader
 
 val inflate_init: ?header: [header | `auto] ->
-	(bytes -> int -> int -> int) -> reader;;
-val inflate: reader -> bytes -> int -> int -> int;;
-val inflate_end: reader -> unit;;
+	(bytes -> int -> int -> int) -> reader
+val inflate: reader -> bytes -> int -> int -> int
+val inflate_end: reader -> unit
