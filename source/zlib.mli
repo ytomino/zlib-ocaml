@@ -25,6 +25,6 @@ val deflate_end: writer -> unit;;
 type reader;;
 
 val inflate_init: ?header: [header | `auto] ->
-	(string -> int -> int -> int) -> reader;;
-val inflate: reader -> string -> int -> int -> int;;
+	(bytes -> int -> int -> int) -> reader;;
+val inflate: reader -> bytes -> int -> int -> int;;
 val inflate_end: reader -> unit;;

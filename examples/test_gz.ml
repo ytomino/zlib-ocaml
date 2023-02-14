@@ -5,17 +5,17 @@ let read data cursor dest index length = (
 		if !cursor + length <= String.length data then length else
 		String.length data - !cursor
 	) in
-	String.blit data !cursor dest index really_length;
+	Bytes.blit_string data !cursor dest index really_length;
 	cursor := !cursor + really_length;
 	really_length
 );;
 
 let read_file filename = (
 	let f = open_in_bin filename in
-	let s = String.create (in_channel_length f) in
-	really_input f s 0 (String.length s);
+	let s = Bytes.create (in_channel_length f) in
+	really_input f s 0 (Bytes.length s);
 	close_in f;
-	s
+	Bytes.unsafe_to_string s
 );;
 
 let src = read_file "test_gz.ml";; (* this file *)
@@ -37,9 +37,9 @@ let dest = (
 	let buf = Buffer.create 1024 in
 	let r = Zlib.inflate_init (read gz (ref 0)) in
 	while
-		let s = String.create 1024 in
+		let s = Bytes.create 1024 in
 		let ri = Zlib.inflate r s 0 1024 in
-		Buffer.add_substring buf s 0 ri;
+		Buffer.add_subbytes buf s 0 ri;
 		ri > 0
 	do () done;
 	Zlib.inflate_end r;

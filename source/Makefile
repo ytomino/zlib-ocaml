@@ -15,7 +15,7 @@ ifneq ($(WITH_ZLIB),)
  WLFLAGS+=-L$(WITH_ZLIB)/lib
 endif
 
-OCAMLCFLAGS=-unsafe-string -w +a
+OCAMLCFLAGS=-w +a
 CFLAGS=$(WIFLAGS) -Wall -Wextra -Wno-unused-result
 
 CCLIB=$(addprefix -cclib ,$(WLFLAGS) -lz)
