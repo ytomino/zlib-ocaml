@@ -20,13 +20,8 @@ type flush =
 	| Z_SYNC_FLUSH (* 2 *)
 	| Z_FULL_FLUSH (* 3 *)
 	| Z_FINISH (* 4 *)
-	| Z_BLOCK;; (* 5 *)
-
-(* suppress warnings *)
-ignore Z_PARTIAL_FLUSH;;
-ignore Z_SYNC_FLUSH;;
-ignore Z_FULL_FLUSH;;
-ignore Z_BLOCK;;
+	| Z_BLOCK (* 5 *)
+	[@@ocaml.warning "-37"];; (* suppress "Unused constructor." *)
 
 type z_stream_s;;
 
