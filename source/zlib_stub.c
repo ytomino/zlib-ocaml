@@ -208,3 +208,17 @@ CAMLprim value mlzlib_inflate_end(value data)
 	if(err != Z_OK) zlib_raise(err);
 	CAMLreturn(Val_unit);
 }
+
+/* crc32 */
+
+CAMLprim value mlzlib_crc32_substring(value crc, value s, value pos, value len)
+{
+	CAMLparam4(crc, s, pos, len);
+	CAMLlocal1(result);
+	uint32_t r = crc32_z(
+		Int32_val(crc),
+		(Bytef const *)(String_val(s) + Long_val(pos)),
+		Long_val(len));
+	result = copy_int32(r);
+	CAMLreturn(result);
+}

@@ -30,3 +30,6 @@ val inflate_init: ?header: [header | `auto] ->
 	(bytes -> int -> int -> int) -> reader
 val inflate: reader -> bytes -> int -> int -> int
 val inflate_end: reader -> unit
+
+external crc32_substring: int32 -> string -> int -> int -> int32 =
+	"mlzlib_crc32_substring"

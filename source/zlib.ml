@@ -130,3 +130,6 @@ let inflate_end (reader: reader): unit = (
 	let stream, _, _ = reader in
 	inflate_end stream
 );;
+
+external crc32_substring: int32 -> string -> int -> int -> int32 =
+	"mlzlib_crc32_substring"
