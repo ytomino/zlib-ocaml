@@ -16,7 +16,7 @@ let read_file filename = (
 	s
 );;
 
-let src = read_file "test.ml";; (* this file *)
+let src = read_file "test_gz.ml";; (* this file *)
 
 let gz = (
 	let buf = Buffer.create 1024 in
