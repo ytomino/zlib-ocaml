@@ -1,3 +1,6 @@
+external zlib_get_version_string: unit -> string =
+	"mlzlib_get_version_string";;
+
 type level = int;;
 
 let z_no_compression = 0;;

@@ -1,4 +1,5 @@
 #include <zlib.h>
+#include <caml/alloc.h>
 #include <caml/custom.h>
 #include <caml/fail.h>
 #include <caml/memory.h>
@@ -35,6 +36,18 @@ static long zstreams_hash(value data)
 	long result = (intptr_t)(Data_custom_val(data));
 	CAMLreturn(result);
 }
+
+/* version functions */
+
+CAMLprim value mlzlib_get_version_string(void)
+{
+	CAMLparam0();
+	CAMLlocal1(result);
+	result = caml_copy_string(zlibVersion());
+	CAMLreturn(result);
+}
+
+/* internal functions */
 
 CAMLprim value mlzlib_avail_in(value data)
 {
