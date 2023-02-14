@@ -1,3 +1,5 @@
+let verbose = Array.length Sys.argv > 1 && Sys.argv.(1) = "--verbose";;
+
 let read data cursor dest index length = (
 	let really_length = (
 		if !cursor + length <= String.length data then length else
@@ -26,8 +28,10 @@ let gz = (
 	Buffer.contents buf
 );;
 
-Printf.printf "%d/%d\n" (String.length gz) (String.length src);
-flush stdout;;
+if verbose then (
+	Printf.printf "%d/%d\n" (String.length gz) (String.length src);
+	flush stdout
+);;
 
 let dest = (
 	let buf = Buffer.create 1024 in
@@ -60,3 +64,7 @@ let unzip = read_file "test-out.txt" in
 assert (unzip = src);
 Sys.remove "test-out.gz";
 Sys.remove "test-out.txt";;
+
+(* report *)
+
+Printf.eprintf "ok\n";;
