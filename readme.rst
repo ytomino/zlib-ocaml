@@ -6,10 +6,12 @@ What's this?
 
 Objective-Caml binding to zlib.
 
-Depending tools and libraries
------------------------------
+Prerequisites
+-------------
 
-zlib
+OCaml >= 4.08
+ https://ocaml.org/
+zlib >= 1.0
  http://www.zlib.net/
 
 How to make
