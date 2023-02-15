@@ -13,8 +13,8 @@ let rec writeb fd buf pos len =
 let def source dest level =
    let strm = zlib_deflateInit level in
 
-   let buf_in = String.create chunk in
-   let buf_out = String.create chunk in
+   let buf_in = Bytes.create chunk in
+   let buf_out = Bytes.create chunk in
 
    let rec aux_read () =
       let size = Unix.read source buf_in 0 chunk in
@@ -22,7 +22,8 @@ let def source dest level =
       let rec aux_def pos_in =
 	 let stream_end, used_in, used_out = 
 	    zlib_deflate strm flush
-	       buf_in pos_in (size-pos_in) buf_out 0 chunk in
+	       (Bytes.unsafe_to_string buf_in) pos_in (size-pos_in) buf_out 0 chunk
+	 in
 	    writeb dest buf_out 0 used_out;
 	    eprintf "DEF: used_in %d, used_out = %d, stream_end %s\n" 
 	       used_in used_out (if stream_end = true then "true" else "false");
@@ -46,15 +47,16 @@ let def source dest level =
 let inf source dest =
    let strm = zlib_inflateInit () in
 
-   let buf_in = String.create chunk in
-   let buf_out = String.create chunk in
+   let buf_in = Bytes.create chunk in
+   let buf_out = Bytes.create chunk in
 
    let rec aux_read () =
       let size = Unix.read source buf_in 0 chunk in
       let rec aux_inf pos_in =
 	 let stream_end, used_in, used_out =
 	    zlib_inflate strm Z_NO_FLUSH 
-	       buf_in pos_in (size - pos_in) buf_out 0 chunk in
+	       (Bytes.unsafe_to_string buf_in) pos_in (size - pos_in) buf_out 0 chunk
+	 in
 	    writeb dest buf_out 0 used_out;
 	    eprintf "INF: used_in %d, used_out = %d, stream_end %s\n" 
 	       used_in used_out (if stream_end = true then "true" else "false");

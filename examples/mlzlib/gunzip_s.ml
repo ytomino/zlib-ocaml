@@ -50,13 +50,13 @@ let gunzip_string buf_in f =
 	 ignore (get_byte ());
 	 ignore (get_byte ())
       );
-      let buf_out = String.create chunk in
+      let buf_out = Bytes.create chunk in
       let rec aux_inf pos_in crc =
 	 let stream_end, used_in, used_out =
             zlib_inflate strm Z_SYNC_FLUSH
                buf_in pos_in (len - pos_in) buf_out 0 chunk in
-	 let newcrc = Mlzlib.crc32 crc buf_out used_out in
-            f buf_out used_out;
+	 let newcrc = Mlzlib.crc32 crc (Bytes.unsafe_to_string buf_out) used_out in
+	    f (Bytes.unsafe_to_string buf_out) used_out;
 	    i := !i + used_in;
 	    if stream_end then (
 	       i := !i - 1;
@@ -84,13 +84,13 @@ let _ =
    let fname = "test.xml" in
    let f_in = open_in_bin fname in
    let buf = Buffer.create chunk in
-   let s = String.create chunk in
+   let s = Bytes.create chunk in
    let rec aux_read () =
       let size = input f_in s 0 chunk in
 	 if size = 0 then
 	    close_in f_in
 	 else (
-	    Buffer.add_string buf (String.sub s 0 size);
+	    Buffer.add_subbytes buf s 0 size;
 	    aux_read ()
 	 )
    in
