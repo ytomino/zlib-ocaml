@@ -43,13 +43,11 @@ external inflate_end: z_stream_s -> unit = "mlzlib_inflate_end";;
 
 type header = [`default | `raw | `gzip];;
 
-type writer = z_stream_s * bytes * (string -> int -> int -> unit);;
+type out_deflater = z_stream_s * bytes * (string -> int -> int -> unit);;
 
-let deflate_init
-	?(level: int = z_default_compression)
-	?(strategy: strategy = Z_DEFAULT_STRATEGY)
-	?(header: header = `default)
-	(output: string -> int -> int -> unit): writer =
+let deflate_init_out ?(level: int = z_default_compression)
+	?(strategy: strategy = Z_DEFAULT_STRATEGY) ?(header: header = `default)
+	(output: string -> int -> int -> unit): out_deflater =
 (
 	let window_bits = (
 		match header with
@@ -63,7 +61,9 @@ let deflate_init
 	stream, buffer, output
 );;
 
-let deflate (writer: writer) (s: string) (pos: int) (len: int): unit = (
+let deflate_out (writer: out_deflater) (s: string) (pos: int) (len: int):
+	unit =
+(
 	let stream, buffer, output = writer in
 	assert (avail_in stream = 0);
 	set_in stream s pos len;
@@ -76,7 +76,7 @@ let deflate (writer: writer) (s: string) (pos: int) (len: int): unit = (
 	done
 );;
 
-let deflate_end (writer: writer): unit = (
+let deflate_end_out (writer: out_deflater): unit = (
 	let stream, buffer, output = writer in
 	assert (avail_in stream = 0);
 	while not (deflate stream Z_FINISH) do
@@ -90,10 +90,10 @@ let deflate_end (writer: writer): unit = (
 	deflate_end stream
 );;
 
-type reader = z_stream_s * bytes * (bytes -> int -> int -> int);;
+type in_inflater = z_stream_s * bytes * (bytes -> int -> int -> int);;
 
-let inflate_init ?(header: [header | `auto] = `auto)
-	(input: bytes -> int -> int -> int): reader =
+let inflate_init_in ?(header: [header | `auto] = `auto)
+	(input: bytes -> int -> int -> int): in_inflater =
 (
 	let window_bits = (
 		match header with
@@ -107,7 +107,7 @@ let inflate_init ?(header: [header | `auto] = `auto)
 	stream, buffer, input
 );;
 
-let inflate (reader: reader) (s: bytes) (pos: int) (len: int): int = (
+let inflate_in (reader: in_inflater) (s: bytes) (pos: int) (len: int): int = (
 	let stream, buffer, input = reader in
 	set_out stream s pos len;
 	while
@@ -126,7 +126,7 @@ let inflate (reader: reader) (s: bytes) (pos: int) (len: int): int = (
 	used
 );;
 
-let inflate_end (reader: reader): unit = (
+let inflate_end_in (reader: in_inflater): unit = (
 	let stream, _, _ = reader in
 	inflate_end stream
 );;

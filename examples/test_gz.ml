@@ -22,9 +22,9 @@ let src = read_file "test_gz.ml";; (* this file *)
 
 let gz = (
 	let buf = Buffer.create 1024 in
-	let w = Zlib.deflate_init (Buffer.add_substring buf) in
-	Zlib.deflate w src 0 (String.length src);
-	Zlib.deflate_end w;
+	let w = Zlib.deflate_init_out (Buffer.add_substring buf) in
+	Zlib.deflate_out w src 0 (String.length src);
+	Zlib.deflate_end_out w;
 	Buffer.contents buf
 );;
 
@@ -35,14 +35,14 @@ if verbose then (
 
 let dest = (
 	let buf = Buffer.create 1024 in
-	let r = Zlib.inflate_init (read gz (ref 0)) in
+	let r = Zlib.inflate_init_in (read gz (ref 0)) in
 	while
 		let s = Bytes.create 1024 in
-		let ri = Zlib.inflate r s 0 1024 in
+		let ri = Zlib.inflate_in r s 0 1024 in
 		Buffer.add_subbytes buf s 0 ri;
 		ri > 0
 	do () done;
-	Zlib.inflate_end r;
+	Zlib.inflate_end_in r;
 	Buffer.contents buf
 );;
 
@@ -50,9 +50,9 @@ assert (src = dest);;
 
 let gz = (
 	let buf = Buffer.create 1024 in
-	let w = Zlib.deflate_init ~header:`gzip (Buffer.add_substring buf) in
-	Zlib.deflate w src 0 (String.length src);
-	Zlib.deflate_end w;
+	let w = Zlib.deflate_init_out ~header:`gzip (Buffer.add_substring buf) in
+	Zlib.deflate_out w src 0 (String.length src);
+	Zlib.deflate_end_out w;
 	Buffer.contents buf
 );;
 
