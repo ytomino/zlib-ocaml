@@ -56,15 +56,18 @@ let make_out (translate_f: z_stream_s -> flush -> bool)
 	(s: string) (pos: int) (len: int) =
 (
 	set_in stream s pos len;
-	let stream_end = ref false in
-	while not !stream_end && avail_in stream > 0 do
-		stream_end := translate_f stream Z_NO_FLUSH;
+	let rec loop rest = (
+		if rest = 0 then rest else
+		let stream_end = translate_f stream Z_NO_FLUSH in
 		if avail_out stream = 0 then (
 			output (Bytes.unsafe_to_string buffer) 0 (Bytes.length buffer);
 			set_out stream buffer 0 (Bytes.length buffer)
-		)
-	done;
-	let rest = avail_in stream in
+		);
+		let rest = avail_in stream in
+		if stream_end then rest
+		else loop rest
+	) in
+	let rest = loop len in
 	let used = len - rest in
 	used
 );;
@@ -74,16 +77,19 @@ let make_end_out (translate_f: z_stream_s -> flush -> bool)
 	(stream, buffer, output: z_stream_s * bytes * (string -> int -> int -> unit)) =
 (
 	set_in stream "" 0 0;
-	while not (translate_f stream Z_FINISH) do
+	let rec loop () = (
+		let stream_end = translate_f stream Z_FINISH in
 		let used_out = Bytes.length buffer - avail_out stream in
 		if used_out > 0 then (
-			output (Bytes.unsafe_to_string buffer) 0 used_out;
-			set_out stream buffer 0 (Bytes.length buffer)
+			output (Bytes.unsafe_to_string buffer) 0 used_out
+		);
+		if stream_end then ()
+		else (
+			if used_out > 0 then set_out stream buffer 0 (Bytes.length buffer);
+			loop ()
 		)
-	done;
-	let rest = avail_out stream in
-	let used = Bytes.length buffer - rest in
-	output (Bytes.unsafe_to_string buffer) 0 used;
+	) in
+	loop ();
 	end_f stream
 );;
 
@@ -118,18 +124,23 @@ let inflate_init_in ?(header: [header | `auto] = `auto)
 let inflate_in (reader: in_inflater) (s: bytes) (pos: int) (len: int) = (
 	let stream, buffer, input = reader in
 	set_out stream s pos len;
-	let stream_end = ref false in
-	while
-		not !stream_end && avail_out stream > 0 && (
-			if avail_in stream = 0 then (
-				set_in stream (Bytes.unsafe_to_string buffer) 0
-					(input buffer 0 (Bytes.length buffer));
-			);
-			avail_in stream > 0)
-	do
-		stream_end := inflate stream Z_NO_FLUSH
-	done;
-	let rest = avail_out stream in
+	let rec loop rest = (
+		if rest = 0
+			|| (
+				avail_in stream = 0 && (
+					let rest_in = input buffer 0 (Bytes.length buffer) in
+					set_in stream (Bytes.unsafe_to_string buffer) 0 rest_in;
+					rest_in = 0
+				)
+			)
+		then rest
+		else
+		let stream_end = inflate stream Z_NO_FLUSH in
+		let rest = avail_out stream in
+		if stream_end then rest
+		else loop rest
+	) in
+	let rest = loop len in
 	let used = len - rest in
 	used
 );;
