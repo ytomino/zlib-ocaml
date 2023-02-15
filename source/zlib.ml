@@ -75,9 +75,11 @@ let make_end_out (translate_f: z_stream_s -> flush -> bool)
 (
 	set_in stream "" 0 0;
 	while not (translate_f stream Z_FINISH) do
-		assert (avail_out stream = 0);
-		output (Bytes.unsafe_to_string buffer) 0 (Bytes.length buffer);
-		set_out stream buffer 0 (Bytes.length buffer)
+		let used_out = Bytes.length buffer - avail_out stream in
+		if used_out > 0 then (
+			output (Bytes.unsafe_to_string buffer) 0 used_out;
+			set_out stream buffer 0 (Bytes.length buffer)
+		)
 	done;
 	let rest = avail_out stream in
 	let used = Bytes.length buffer - rest in
