@@ -20,7 +20,7 @@ type out_deflater
 
 val deflate_init_out: ?level: int -> ?strategy: strategy -> ?header: header ->
 	(string -> int -> int -> unit) -> out_deflater
-val deflate_out: out_deflater -> string -> int -> int -> unit
+val deflate_out: out_deflater -> string -> int -> int -> int
 val deflate_end_out: out_deflater -> unit
 
 type in_inflater

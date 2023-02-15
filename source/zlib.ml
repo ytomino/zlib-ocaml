@@ -63,7 +63,6 @@ let deflate_init_out ?(level: int = z_default_compression)
 
 let deflate_out (writer: out_deflater) (s: string) (pos: int) (len: int) = (
 	let stream, buffer, output = writer in
-	assert (avail_in stream = 0);
 	set_in stream s pos len;
 	let stream_end = ref false in
 	while not !stream_end && avail_in stream > 0 do
@@ -72,12 +71,15 @@ let deflate_out (writer: out_deflater) (s: string) (pos: int) (len: int) = (
 			output (Bytes.unsafe_to_string buffer) 0 (Bytes.length buffer);
 			set_out stream buffer 0 (Bytes.length buffer)
 		)
-	done
+	done;
+	let rest = avail_in stream in
+	let used = len - rest in
+	used
 );;
 
 let deflate_end_out (writer: out_deflater) = (
 	let stream, buffer, output = writer in
-	assert (avail_in stream = 0);
+	set_in stream "" 0 0;
 	while not (deflate stream Z_FINISH) do
 		assert (avail_out stream = 0);
 		output (Bytes.unsafe_to_string buffer) 0 (Bytes.length buffer);
