@@ -1,6 +1,15 @@
 external zlib_get_version_string: unit -> string =
 	"mlzlib_get_version_string";;
 
+type flush =
+	| Z_NO_FLUSH (* 0 *)
+	| Z_PARTIAL_FLUSH (* 1 *)
+	| Z_SYNC_FLUSH (* 2 *)
+	| Z_FULL_FLUSH (* 3 *)
+	| Z_FINISH (* 4 *)
+	| Z_BLOCK (* 5 *)
+	[@@ocaml.warning "-37"];; (* suppress "Unused constructor." *)
+
 type level = int;;
 
 let z_no_compression = 0;;
@@ -15,17 +24,6 @@ type strategy =
 	| Z_RLE (* 3 *)
 	| Z_FIXED;; (* 4 *)
 
-type header = [`default | `raw | `gzip];;
-
-type flush =
-	| Z_NO_FLUSH (* 0 *)
-	| Z_PARTIAL_FLUSH (* 1 *)
-	| Z_SYNC_FLUSH (* 2 *)
-	| Z_FULL_FLUSH (* 3 *)
-	| Z_FINISH (* 4 *)
-	| Z_BLOCK (* 5 *)
-	[@@ocaml.warning "-37"];; (* suppress "Unused constructor." *)
-
 type z_stream_s;;
 
 external avail_in: z_stream_s -> int = "mlzlib_avail_in";;
@@ -38,6 +36,12 @@ external deflate_init: int -> strategy -> int -> z_stream_s =
 	"mlzlib_deflate_init";;
 external deflate: z_stream_s -> flush -> bool = "mlzlib_deflate";;
 external deflate_end: z_stream_s -> unit = "mlzlib_deflate_end";;
+
+external inflate_init: int -> z_stream_s = "mlzlib_inflate_init";;
+external inflate: z_stream_s -> flush -> bool = "mlzlib_inflate";;
+external inflate_end: z_stream_s -> unit = "mlzlib_inflate_end";;
+
+type header = [`default | `raw | `gzip];;
 
 type writer = z_stream_s * bytes * (string -> int -> int -> unit);;
 
@@ -59,20 +63,6 @@ let deflate_init
 	stream, buffer, output
 );;
 
-let deflate_end (writer: writer): unit = (
-	let stream, buffer, output = writer in
-	assert (avail_in stream = 0);
-	while not (deflate stream Z_FINISH) do
-		assert (avail_out stream = 0);
-		output (Bytes.unsafe_to_string buffer) 0 (Bytes.length buffer);
-		set_out stream buffer 0 (Bytes.length buffer)
-	done;
-	let rest = avail_out stream in
-	let used = Bytes.length buffer - rest in
-	output (Bytes.unsafe_to_string buffer) 0 used;
-	deflate_end stream
-);;
-
 let deflate (writer: writer) (s: string) (pos: int) (len: int): unit = (
 	let stream, buffer, output = writer in
 	assert (avail_in stream = 0);
@@ -86,9 +76,19 @@ let deflate (writer: writer) (s: string) (pos: int) (len: int): unit = (
 	done
 );;
 
-external inflate_init: int -> z_stream_s = "mlzlib_inflate_init";;
-external inflate: z_stream_s -> flush -> bool = "mlzlib_inflate";;
-external inflate_end: z_stream_s -> unit = "mlzlib_inflate_end";;
+let deflate_end (writer: writer): unit = (
+	let stream, buffer, output = writer in
+	assert (avail_in stream = 0);
+	while not (deflate stream Z_FINISH) do
+		assert (avail_out stream = 0);
+		output (Bytes.unsafe_to_string buffer) 0 (Bytes.length buffer);
+		set_out stream buffer 0 (Bytes.length buffer)
+	done;
+	let rest = avail_out stream in
+	let used = Bytes.length buffer - rest in
+	output (Bytes.unsafe_to_string buffer) 0 used;
+	deflate_end stream
+);;
 
 type reader = z_stream_s * bytes * (bytes -> int -> int -> int);;
 
