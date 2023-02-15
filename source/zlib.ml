@@ -65,8 +65,9 @@ let deflate_out (writer: out_deflater) (s: string) (pos: int) (len: int) = (
 	let stream, buffer, output = writer in
 	assert (avail_in stream = 0);
 	set_in stream s pos len;
-	while avail_in stream > 0 do
-		let (_: bool) = deflate stream Z_NO_FLUSH in
+	let stream_end = ref false in
+	while not !stream_end && avail_in stream > 0 do
+		stream_end := deflate stream Z_NO_FLUSH;
 		if avail_out stream = 0 then (
 			output (Bytes.unsafe_to_string buffer) 0 (Bytes.length buffer);
 			set_out stream buffer 0 (Bytes.length buffer)
