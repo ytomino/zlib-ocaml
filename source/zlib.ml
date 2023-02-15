@@ -47,7 +47,7 @@ type out_deflater = z_stream_s * bytes * (string -> int -> int -> unit);;
 
 let deflate_init_out ?(level: int = z_default_compression)
 	?(strategy: strategy = Z_DEFAULT_STRATEGY) ?(header: header = `default)
-	(output: string -> int -> int -> unit): out_deflater =
+	(output: string -> int -> int -> unit) =
 (
 	let window_bits = (
 		match header with
@@ -61,9 +61,7 @@ let deflate_init_out ?(level: int = z_default_compression)
 	stream, buffer, output
 );;
 
-let deflate_out (writer: out_deflater) (s: string) (pos: int) (len: int):
-	unit =
-(
+let deflate_out (writer: out_deflater) (s: string) (pos: int) (len: int) = (
 	let stream, buffer, output = writer in
 	assert (avail_in stream = 0);
 	set_in stream s pos len;
@@ -76,7 +74,7 @@ let deflate_out (writer: out_deflater) (s: string) (pos: int) (len: int):
 	done
 );;
 
-let deflate_end_out (writer: out_deflater): unit = (
+let deflate_end_out (writer: out_deflater) = (
 	let stream, buffer, output = writer in
 	assert (avail_in stream = 0);
 	while not (deflate stream Z_FINISH) do
@@ -93,7 +91,7 @@ let deflate_end_out (writer: out_deflater): unit = (
 type in_inflater = z_stream_s * bytes * (bytes -> int -> int -> int);;
 
 let inflate_init_in ?(header: [header | `auto] = `auto)
-	(input: bytes -> int -> int -> int): in_inflater =
+	(input: bytes -> int -> int -> int) =
 (
 	let window_bits = (
 		match header with
@@ -107,7 +105,7 @@ let inflate_init_in ?(header: [header | `auto] = `auto)
 	stream, buffer, input
 );;
 
-let inflate_in (reader: in_inflater) (s: bytes) (pos: int) (len: int): int = (
+let inflate_in (reader: in_inflater) (s: bytes) (pos: int) (len: int) = (
 	let stream, buffer, input = reader in
 	set_out stream s pos len;
 	while
@@ -126,7 +124,7 @@ let inflate_in (reader: in_inflater) (s: bytes) (pos: int) (len: int): int = (
 	used
 );;
 
-let inflate_end_in (reader: in_inflater): unit = (
+let inflate_end_in (reader: in_inflater) = (
 	let stream, _, _ = reader in
 	inflate_end stream
 );;
