@@ -118,16 +118,16 @@ let inflate_init_in ?(header: [header | `auto] = `auto)
 let inflate_in (reader: in_inflater) (s: bytes) (pos: int) (len: int) = (
 	let stream, buffer, input = reader in
 	set_out stream s pos len;
+	let stream_end = ref false in
 	while
-		avail_out stream > 0 && (
+		not !stream_end && avail_out stream > 0 && (
 			if avail_in stream = 0 then (
 				set_in stream (Bytes.unsafe_to_string buffer) 0
 					(input buffer 0 (Bytes.length buffer));
 			);
 			avail_in stream > 0)
 	do
-		let (_: bool) = inflate stream Z_NO_FLUSH in
-		()
+		stream_end := inflate stream Z_NO_FLUSH
 	done;
 	let rest = avail_out stream in
 	let used = len - rest in
