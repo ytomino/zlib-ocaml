@@ -20,6 +20,8 @@ let read_file filename = (
 
 let src = read_file "test_gz.ml";; (* this file *)
 
+(* out_deflator *)
+
 let gz = (
 	let buf = Buffer.create 1024 in
 	let w = Zlib.deflate_init_out (Buffer.add_substring buf) in
@@ -34,6 +36,8 @@ if verbose then (
 	flush stdout
 );;
 
+(* in_inflater *)
+
 let dest = (
 	let buf = Buffer.create 1024 in
 	let r = Zlib.inflate_init_in (read gz (ref 0)) in
@@ -45,9 +49,22 @@ let dest = (
 	do () done;
 	Zlib.inflate_end_in r;
 	Buffer.contents buf
-);;
-
+) in
 assert (src = dest);;
+
+(* out_inflater *)
+
+let dest = (
+	let buf = Buffer.create 1024 in
+	let w = Zlib.inflate_init_out (Buffer.add_substring buf) in
+	let used = Zlib.inflate_out w gz 0 (String.length gz) in
+	assert (used = String.length gz);
+	Zlib.inflate_end_out w;
+	Buffer.contents buf
+) in
+assert (src = dest);;
+
+(* gzip *)
 
 let gz = (
 	let buf = Buffer.create 1024 in

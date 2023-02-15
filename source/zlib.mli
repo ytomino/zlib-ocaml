@@ -30,5 +30,12 @@ val inflate_init_in: ?header: [header | `auto] ->
 val inflate_in: in_inflater -> bytes -> int -> int -> int
 val inflate_end_in: in_inflater -> unit
 
+type out_inflater
+
+val inflate_init_out: ?header: [header | `auto] ->
+	(string -> int -> int -> unit) -> out_inflater
+val inflate_out: out_inflater -> string -> int -> int -> int
+val inflate_end_out: out_inflater -> unit
+
 external crc32_substring: int32 -> string -> int -> int -> int32 =
 	"mlzlib_crc32_substring"

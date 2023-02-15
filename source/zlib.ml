@@ -43,30 +43,22 @@ external inflate_end: z_stream_s -> unit = "mlzlib_inflate_end";;
 
 type header = [`default | `raw | `gzip];;
 
-type out_deflater = z_stream_s * bytes * (string -> int -> int -> unit);;
-
-let deflate_init_out ?(level: int = z_default_compression)
-	?(strategy: strategy = Z_DEFAULT_STRATEGY) ?(header: header = `default)
-	(output: string -> int -> int -> unit) =
-(
-	let window_bits = (
-		match header with
-		| `default -> 15
-		| `raw -> -15
-		| `gzip -> 31
-	) in
-	let stream = deflate_init level strategy window_bits in
-	let buffer = Bytes.create (1 lsl 15) in
-	set_out stream buffer 0 (Bytes.length buffer);
-	stream, buffer, output
+let window_bits_of_header (header: [< header | `auto]) = (
+	match header with
+	| `default -> 15
+	| `raw -> -15
+	| `gzip -> 31
+	| `auto -> 47
 );;
 
-let deflate_out (writer: out_deflater) (s: string) (pos: int) (len: int) = (
-	let stream, buffer, output = writer in
+let make_out (translate_f: z_stream_s -> flush -> bool)
+	(stream, buffer, output: z_stream_s * bytes * (string -> int -> int -> unit))
+	(s: string) (pos: int) (len: int) =
+(
 	set_in stream s pos len;
 	let stream_end = ref false in
 	while not !stream_end && avail_in stream > 0 do
-		stream_end := deflate stream Z_NO_FLUSH;
+		stream_end := translate_f stream Z_NO_FLUSH;
 		if avail_out stream = 0 then (
 			output (Bytes.unsafe_to_string buffer) 0 (Bytes.length buffer);
 			set_out stream buffer 0 (Bytes.length buffer)
@@ -77,10 +69,12 @@ let deflate_out (writer: out_deflater) (s: string) (pos: int) (len: int) = (
 	used
 );;
 
-let deflate_end_out (writer: out_deflater) = (
-	let stream, buffer, output = writer in
+let make_end_out (translate_f: z_stream_s -> flush -> bool)
+	(end_f: z_stream_s -> unit)
+	(stream, buffer, output: z_stream_s * bytes * (string -> int -> int -> unit)) =
+(
 	set_in stream "" 0 0;
-	while not (deflate stream Z_FINISH) do
+	while not (translate_f stream Z_FINISH) do
 		assert (avail_out stream = 0);
 		output (Bytes.unsafe_to_string buffer) 0 (Bytes.length buffer);
 		set_out stream buffer 0 (Bytes.length buffer)
@@ -88,21 +82,32 @@ let deflate_end_out (writer: out_deflater) = (
 	let rest = avail_out stream in
 	let used = Bytes.length buffer - rest in
 	output (Bytes.unsafe_to_string buffer) 0 used;
-	deflate_end stream
+	end_f stream
 );;
+
+type out_deflater = z_stream_s * bytes * (string -> int -> int -> unit);;
+
+let deflate_init_out ?(level: int = z_default_compression)
+	?(strategy: strategy = Z_DEFAULT_STRATEGY) ?(header: header = `default)
+	(output: string -> int -> int -> unit) =
+(
+	let window_bits = window_bits_of_header header in
+	let stream = deflate_init level strategy window_bits in
+	let buffer = Bytes.create (1 lsl 15) in
+	set_out stream buffer 0 (Bytes.length buffer);
+	stream, buffer, output
+);;
+
+let deflate_out = make_out deflate;;
+
+let deflate_end_out = make_end_out deflate deflate_end;;
 
 type in_inflater = z_stream_s * bytes * (bytes -> int -> int -> int);;
 
 let inflate_init_in ?(header: [header | `auto] = `auto)
 	(input: bytes -> int -> int -> int) =
 (
-	let window_bits = (
-		match header with
-		| `default -> 15
-		| `raw -> -15
-		| `gzip -> 31
-		| `auto -> 47
-	) in
+	let window_bits = window_bits_of_header header in
 	let stream = inflate_init window_bits in
 	let buffer = Bytes.create (1 lsl 15) in
 	stream, buffer, input
@@ -131,6 +136,22 @@ let inflate_end_in (reader: in_inflater) = (
 	let stream, _, _ = reader in
 	inflate_end stream
 );;
+
+type out_inflater = z_stream_s * bytes * (string -> int -> int -> unit);;
+
+let inflate_init_out ?(header: [header | `auto] = `auto)
+	(output: string -> int -> int -> unit) =
+(
+	let window_bits = window_bits_of_header header in
+	let stream = inflate_init window_bits in
+	let buffer = Bytes.create (1 lsl 15) in
+	set_out stream buffer 0 (Bytes.length buffer);
+	stream, buffer, output
+);;
+
+let inflate_out = make_out inflate;;
+
+let inflate_end_out = make_end_out inflate inflate_end;;
 
 external crc32_substring: int32 -> string -> int -> int -> int32 =
 	"mlzlib_crc32_substring"
