@@ -23,8 +23,9 @@ BUILDSUFFIX=.noindex
 BUILDDIR=$(TARGET)$(BUILDSUFFIX)
 ZLIB_BUILDDIR=$(BUILDDIR)/zlib$(BUILDSUFFIX)
 
-EXAMPLES=$(basename $(wildcard *.ml))
-TESTS=$(filter test_%,$(EXAMPLES))
+EXAMPLES1=$(basename $(wildcard *.ml))
+EXAMPLES=$(EXAMPLES1) gunzip_s zpipe
+TESTS=$(filter test_%,$(EXAMPLES1))
 
 .PHONY: all check interacitve clean $(TESTS)
 
@@ -40,6 +41,22 @@ $(BUILDDIR)/%.byte.exe: %.ml $(BUILDDIR)/zlib.cma
 $(BUILDDIR)/%.opt.exe: %.ml $(BUILDDIR)/zlib.cmxa
 	$(OCAMLOPT) -c -o $(BUILDDIR)/$*.cmx -I $(BUILDDIR) $(OCAMLCFLAGS) $<
 	$(OCAMLOPT) -o $@ -I $(BUILDDIR) zlib.cmxa $(BUILDDIR)/$*.cmx
+
+$(BUILDDIR)/mlzlib.cmo: mlzlib/mlzlib.ml $(BUILDDIR)/zlib.cma
+	$(OCAMLC) -c -o $@ -I $(BUILDDIR) $(OCAMLCFLAGS) $<
+
+$(BUILDDIR)/mlzlib.cmx: mlzlib/mlzlib.ml $(BUILDDIR)/zlib.cmxa
+	$(OCAMLOPT) -c -o $@ -I $(BUILDDIR) $(OCAMLCFLAGS) $<
+
+$(BUILDDIR)/%.byte.exe: mlzlib/%.ml $(BUILDDIR)/mlzlib.cmo
+	$(OCAMLC) -c -o $(BUILDDIR)/$*.cmo -I $(BUILDDIR) $(OCAMLCFLAGS) $<
+	$(OCAMLC) -o $@ -I $(BUILDDIR) \
+		unix.cma zlib.cma $(BUILDDIR)/mlzlib.cmo $(BUILDDIR)/$*.cmo
+
+$(BUILDDIR)/%.opt.exe: mlzlib/%.ml $(BUILDDIR)/mlzlib.cmx
+	$(OCAMLOPT) -c -o $(BUILDDIR)/$*.cmx -I $(BUILDDIR) $(OCAMLCFLAGS) $<
+	$(OCAMLOPT) -o $@ -I $(BUILDDIR) \
+		unix.cmxa zlib.cmxa $(BUILDDIR)/mlzlib.cmx $(BUILDDIR)/$*.cmx
 
 check: all $(TESTS)
 
