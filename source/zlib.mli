@@ -21,6 +21,7 @@ type out_deflater
 val deflate_init_out: ?level: int -> ?strategy: strategy -> ?header: header ->
 	(string -> int -> int -> unit) -> out_deflater
 val deflate_out: out_deflater -> string -> int -> int -> int
+val deflate_flush: out_deflater -> unit
 val deflate_end_out: out_deflater -> unit
 
 type in_inflater
@@ -35,6 +36,7 @@ type out_inflater
 val inflate_init_out: ?header: [header | `auto] ->
 	(string -> int -> int -> unit) -> out_inflater
 val inflate_out: out_inflater -> string -> int -> int -> int
+val inflate_flush: out_inflater -> unit
 val inflate_end_out: out_inflater -> unit
 
 external crc32_substring: int32 -> string -> int -> int -> int32 =
