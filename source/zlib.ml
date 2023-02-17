@@ -110,6 +110,17 @@ let deflate_init_out ?(level: int = z_default_compression)
 
 let deflate_out = make_out deflate;;
 
+let deflate_flush
+	(stream, buffer, output: z_stream_s * bytes * (string -> int -> int -> unit)) =
+(
+	let buffer_length = Bytes.length buffer in
+	let used_out = buffer_length - avail_out stream in
+	if used_out > 0 then (
+		output (Bytes.unsafe_to_string buffer) 0 used_out;
+		set_out stream buffer 0 buffer_length
+	)
+);;
+
 let deflate_end_out = make_end_out deflate deflate_end;;
 
 type in_inflater = z_stream_s * bytes * (bytes -> int -> int -> int);;
@@ -165,6 +176,8 @@ let inflate_init_out ?(header: [header | `auto] = `auto)
 );;
 
 let inflate_out = make_out inflate;;
+
+let inflate_flush = deflate_flush;;
 
 let inflate_end_out = make_end_out inflate inflate_end;;
 
