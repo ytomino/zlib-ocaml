@@ -60,8 +60,9 @@ let make_out (translate_f: z_stream_s -> flush -> bool)
 		if rest = 0 then rest else
 		let stream_end = translate_f stream Z_NO_FLUSH in
 		if avail_out stream = 0 then (
-			output (Bytes.unsafe_to_string buffer) 0 (Bytes.length buffer);
-			set_out stream buffer 0 (Bytes.length buffer)
+			let buffer_length = Bytes.length buffer in
+			output (Bytes.unsafe_to_string buffer) 0 buffer_length;
+			set_out stream buffer 0 buffer_length
 		);
 		let rest = avail_in stream in
 		if stream_end then rest
@@ -79,13 +80,14 @@ let make_end_out (translate_f: z_stream_s -> flush -> bool)
 	set_in stream "" 0 0;
 	let rec loop () = (
 		let stream_end = translate_f stream Z_FINISH in
-		let used_out = Bytes.length buffer - avail_out stream in
+		let buffer_length = Bytes.length buffer in
+		let used_out = buffer_length - avail_out stream in
 		if used_out > 0 then (
 			output (Bytes.unsafe_to_string buffer) 0 used_out
 		);
 		if stream_end then ()
 		else (
-			if used_out > 0 then set_out stream buffer 0 (Bytes.length buffer);
+			if used_out > 0 then set_out stream buffer 0 buffer_length;
 			loop ()
 		)
 	) in
