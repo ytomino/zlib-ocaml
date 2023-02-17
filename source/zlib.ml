@@ -134,8 +134,9 @@ let inflate_init_in ?(header: [header | `auto] = `auto)
 	stream, buffer, input
 );;
 
-let inflate_in (reader: in_inflater) (s: bytes) (pos: int) (len: int) = (
-	let stream, buffer, input = reader in
+let inflate_in (stream, buffer, input: in_inflater) (s: bytes) (pos: int)
+	(len: int) =
+(
 	set_out stream s pos len;
 	let rec loop rest = (
 		if rest = 0
@@ -158,8 +159,7 @@ let inflate_in (reader: in_inflater) (s: bytes) (pos: int) (len: int) = (
 	used
 );;
 
-let inflate_end_in (reader: in_inflater) = (
-	let stream, _, _ = reader in
+let inflate_end_in (stream, _, _: in_inflater) = (
 	inflate_end stream
 );;
 
