@@ -9,7 +9,7 @@ static void zlib_raise(int code)
 {
 	switch(code){
 	case Z_MEM_ERROR:
-		raise_out_of_memory();
+		caml_raise_out_of_memory();
 		break;
 	default:
 		caml_failwith(zError(code));
@@ -106,7 +106,7 @@ CAMLprim value mlzlib_deflate_init(value level, value strategy,
 {
 	CAMLparam3(level, strategy, window_bits);
 	CAMLlocal1(result);
-	result = alloc_custom(&deflate_ops, sizeof(struct z_stream_s), 0, 1);
+	result = caml_alloc_custom(&deflate_ops, sizeof(struct z_stream_s), 0, 1);
 	struct z_stream_s *stream = zstreams_val(result);
 	stream->zalloc = NULL;
 	stream->zfree = NULL;
@@ -171,7 +171,7 @@ CAMLprim value mlzlib_inflate_init(value window_bits)
 {
 	CAMLparam1(window_bits);
 	CAMLlocal1(result);
-	result = alloc_custom(&inflate_ops, sizeof(struct z_stream_s), 0, 1);
+	result = caml_alloc_custom(&inflate_ops, sizeof(struct z_stream_s), 0, 1);
 	struct z_stream_s *stream = zstreams_val(result);
 	stream->zalloc = NULL;
 	stream->zfree = NULL;
@@ -219,6 +219,6 @@ CAMLprim value mlzlib_crc32_substring(value crc, value s, value pos, value len)
 		Int32_val(crc),
 		(Bytef const *)(String_val(s) + Long_val(pos)),
 		Long_val(len));
-	result = copy_int32(r);
+	result = caml_copy_int32(r);
 	CAMLreturn(result);
 }
