@@ -121,12 +121,12 @@ CAMLprim value mlzlib_deflate_init(value level, value strategy,
 	CAMLreturn(result);
 }
 
-CAMLprim value mlzlib_deflate(value data, value flush)
+CAMLprim value mlzlib_deflate(value data, value flush_value)
 {
-	CAMLparam2(data, flush);
+	CAMLparam2(data, flush_value);
 	CAMLlocal1(result);
 	struct z_stream_s *stream = zstreams_val(data);
-	int err = deflate(stream, Int_val(flush));
+	int err = deflate(stream, Int_val(flush_value));
 	switch(err){
 	case Z_OK:
 		result = Val_false;
@@ -181,12 +181,12 @@ CAMLprim value mlzlib_inflate_init(value window_bits)
 	CAMLreturn(result);
 }
 
-CAMLprim value mlzlib_inflate(value data, value flush)
+CAMLprim value mlzlib_inflate(value data, value flush_value)
 {
-	CAMLparam2(data, flush);
+	CAMLparam2(data, flush_value);
 	CAMLlocal1(result);
 	struct z_stream_s *stream = zstreams_val(data);
-	int err = inflate(stream, Int_val(flush));
+	int err = inflate(stream, Int_val(flush_value));
 	switch(err){
 	case Z_OK:
 		result = Val_false;
