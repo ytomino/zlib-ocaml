@@ -31,6 +31,7 @@ external set_in: z_stream_s -> string -> int -> int -> unit = "mlzlib_set_in";;
 external avail_out: z_stream_s -> int = "mlzlib_avail_out";;
 external set_out: z_stream_s -> bytes -> int -> int -> unit =
 	"mlzlib_set_out";;
+external ended: z_stream_s -> bool = "mlzlib_ended";;
 
 external deflate_init: int -> strategy -> int -> z_stream_s =
 	"mlzlib_deflate_init";;
@@ -77,27 +78,29 @@ let make_end_out (translate_f: z_stream_s -> flush -> bool)
 	(end_f: z_stream_s -> unit)
 	(stream, buffer, output: z_stream_s * bytes * (string -> int -> int -> unit)) =
 (
-	set_in stream "" 0 0;
-	let rec loop () = (
-		match translate_f stream Z_FINISH  with
-		| _ as stream_end ->
-			let buffer_length = Bytes.length buffer in
-			let used_out = buffer_length - avail_out stream in
-			if used_out > 0 then (
-				output (Bytes.unsafe_to_string buffer) 0 used_out
-			);
-			if stream_end then None
-			else (
-				if used_out > 0 then set_out stream buffer 0 buffer_length;
-				loop ()
-			)
-		| exception (Failure _ as exn) -> Some exn
-	) in
-	let exn_opt = loop () in
-	end_f stream;
-	match exn_opt with
-	| Some exn -> raise exn
-	| None -> ()
+	if not (ended stream) then (
+		set_in stream "" 0 0;
+		let rec loop () = (
+			match translate_f stream Z_FINISH  with
+			| _ as stream_end ->
+				let buffer_length = Bytes.length buffer in
+				let used_out = buffer_length - avail_out stream in
+				if used_out > 0 then (
+					output (Bytes.unsafe_to_string buffer) 0 used_out
+				);
+				if stream_end then None
+				else (
+					if used_out > 0 then set_out stream buffer 0 buffer_length;
+					loop ()
+				)
+			| exception (Failure _ as exn) -> Some exn
+		) in
+		let exn_opt = loop () in
+		end_f stream;
+		match exn_opt with
+		| Some exn -> raise exn
+		| None -> ()
+	)
 );;
 
 type out_deflater = z_stream_s * bytes * (string -> int -> int -> unit);;

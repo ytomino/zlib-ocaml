@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <zlib.h>
 #include <caml/alloc.h>
 #include <caml/custom.h>
@@ -83,13 +84,23 @@ CAMLprim value mlzlib_set_out(value data, value s, value pos, value len)
 	CAMLreturn(Val_unit);
 }
 
+CAMLprim value mlzlib_ended(value data)
+{
+	CAMLparam1(data);
+	struct z_stream_s *stream = zstreams_val(data);
+	bool result = stream->zalloc == NULL;
+	CAMLreturn(Val_bool(result));
+}
+
 /* writer */
 
 static void zstreams_deflate_finalize(value data)
 {
 	CAMLparam1(data);
 	struct z_stream_s *stream = zstreams_val(data);
-	deflateEnd(stream);
+	if(stream->zalloc != NULL){
+		deflateEnd(stream);
+	}
 	CAMLreturn0;
 }
 
@@ -118,6 +129,8 @@ CAMLprim value mlzlib_deflate_init(value level, value strategy,
 		8,
 		Int_val(strategy));
 	if(err != Z_OK) zlib_raise(err);
+	/* zalloc is used to determine the valid status. */
+	if(stream->zalloc == NULL) caml_failwith(__FUNCTION__);
 	CAMLreturn(result);
 }
 
@@ -144,8 +157,11 @@ CAMLprim value mlzlib_deflate_end(value data)
 {
 	CAMLparam1(data);
 	struct z_stream_s *stream = zstreams_val(data);
-	int err = deflateEnd(stream);
-	if(err != Z_OK) zlib_raise(err);
+	if(stream->zalloc != NULL){
+		int err = deflateEnd(stream);
+		if(err != Z_OK) zlib_raise(err);
+		stream->zalloc = NULL;
+	}
 	CAMLreturn(Val_unit);
 }
 
@@ -155,7 +171,9 @@ static void zstreams_inflate_finalize(value data)
 {
 	CAMLparam1(data);
 	struct z_stream_s *stream = zstreams_val(data);
-	inflateEnd(stream);
+	if(stream->zalloc != NULL){
+		inflateEnd(stream);
+	}
 	CAMLreturn0;
 }
 
@@ -178,6 +196,8 @@ CAMLprim value mlzlib_inflate_init(value window_bits)
 	stream->opaque = NULL;
 	int err = inflateInit2(stream, Int_val(window_bits));
 	if(err != Z_OK) zlib_raise(err);
+	/* zalloc is used to determine the valid status. */
+	if(stream->zalloc == NULL) caml_failwith(__FUNCTION__);
 	CAMLreturn(result);
 }
 
@@ -204,8 +224,11 @@ CAMLprim value mlzlib_inflate_end(value data)
 {
 	CAMLparam1(data);
 	struct z_stream_s *stream = zstreams_val(data);
-	int err = inflateEnd(stream);
-	if(err != Z_OK) zlib_raise(err);
+	if(stream->zalloc != NULL){
+		int err = inflateEnd(stream);
+		if(err != Z_OK) zlib_raise(err);
+		stream->zalloc = NULL;
+	}
 	CAMLreturn(Val_unit);
 }
 
