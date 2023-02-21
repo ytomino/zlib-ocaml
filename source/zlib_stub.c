@@ -194,6 +194,8 @@ CAMLprim value mlzlib_inflate_init(value window_bits)
 	stream->zalloc = NULL;
 	stream->zfree = NULL;
 	stream->opaque = NULL;
+	stream->next_in = NULL;
+	stream->avail_in = 0;
 	int err = inflateInit2(stream, Int_val(window_bits));
 	if(err != Z_OK) zlib_raise(err);
 	/* zalloc is used to determine the valid status. */
