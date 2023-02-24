@@ -6,7 +6,7 @@
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
 
-static void zlib_raise(int code)
+__attribute__((noreturn)) static void zlib_raise(int code)
 {
 	switch(code){
 	case Z_MEM_ERROR:
