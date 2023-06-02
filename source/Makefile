@@ -17,6 +17,7 @@ ifneq ($(WITH_ZLIB),)
 endif
 
 OCAMLCFLAGS=-w +a
+OCAMLOPTFLAGS=$(OCAMLCFLAGS)
 CFLAGS=$(WIFLAGS) -Wall -Wextra -Wno-unused-result
 
 CCLIB=$(addprefix -cclib ,$(WLFLAGS) -lz)
