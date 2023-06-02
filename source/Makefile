@@ -8,6 +8,7 @@ CSRC=zlib_stub.c
 LIBNAME=zlib
 STUBLIBNAME=ml$(LIBNAME)
 
+WITH_ZLIB?=
 WIFLAGS=
 WLFLAGS=
 ifneq ($(WITH_ZLIB),)
