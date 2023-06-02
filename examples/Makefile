@@ -2,20 +2,10 @@ BUILD:=$(shell $(CC) -dumpmachine)
 HOST=$(BUILD)
 TARGET=$(HOST)
 
-ifneq ($(TARGET),$(BUILD))
- PROGRAMPREFIX=$(TARGET)-
- BINLN=
-else
- PROGRAMPREFIX=
- ifneq ($(findstring mingw,$(BUILD))$(findstring msys,$(BUILD)),)
-  BINLN=
- else
-  BINLN=bin
- endif
-endif
+PROGRAMPREFIX=$(addsuffix -,$(filter-out $(BUILD),$(TARGET)))
 
 OCAMLC=$(PROGRAMPREFIX)ocamlc
-OCAMLOPT=$(if $(OCAMLC),$(OCAMLC:c=opt),$(PROGRAMPREFIX)ocamlopt)
+OCAMLOPT=$(or $(OCAMLC:c=opt),$(PROGRAMPREFIX)ocamlopt)
 RLWRAP?=
 
 OCAMLCFLAGS=
@@ -25,6 +15,9 @@ BUILDSUFFIX=.noindex
 BUILDDIR=$(TARGET)$(BUILDSUFFIX)
 ZLIB_BUILDDIR=$(BUILDDIR)/zlib$(BUILDSUFFIX)
 
+BINLN=$(and $(filter $(BUILD),$(TARGET)), \
+        $(if $(findstring mingw,$(BUILD))$(findstring msys,$(BUILD)),,bin))
+
 EXAMPLES1=$(basename $(wildcard *.ml))
 EXAMPLES=$(EXAMPLES1) gunzip_s zpipe
 TESTS=$(filter test_%,$(EXAMPLES1))
@@ -32,8 +25,8 @@ TESTS=$(filter test_%,$(EXAMPLES1))
 .PHONY: all check interacitve clean $(TESTS)
 
 all: \
-	$(if $(OCAMLC),$(patsubst %,$(BUILDDIR)/%.byte.exe,$(EXAMPLES))) \
-	$(if $(OCAMLOPT),$(patsubst %,$(BUILDDIR)/%.opt.exe,$(EXAMPLES))) \
+	$(and $(OCAMLC),$(patsubst %,$(BUILDDIR)/%.byte.exe,$(EXAMPLES))) \
+	$(and $(OCAMLOPT),$(patsubst %,$(BUILDDIR)/%.opt.exe,$(EXAMPLES))) \
 	$(BINLN)
 
 $(BUILDDIR)/%.byte.exe: %.ml $(BUILDDIR)/zlib.cma
@@ -63,19 +56,16 @@ $(BUILDDIR)/%.opt.exe: mlzlib/%.ml $(BUILDDIR)/mlzlib.cmx
 check: all $(TESTS)
 
 $(TESTS): %: \
-		$(if $(OCAMLC),$(BUILDDIR)/%.byte.exe) $(if $(OCAMLOPT),$(BUILDDIR)/%.opt.exe)
-ifneq ($(OCAMLC),)
-	$<
-endif
-ifneq ($(OCAMLOPT),)
-	$(BUILDDIR)/$*.opt.exe
-endif
+		$(and $(OCAMLC),$(BUILDDIR)/%.byte.exe) \
+		$(and $(OCAMLOPT),$(BUILDDIR)/%.opt.exe)
+	$(and $(OCAMLC),$<)
+	$(and $(OCAMLOPT),$(BUILDDIR)/$*.opt.exe)
 
 interactive: $(BUILDDIR)/zlib.cma
 	$(RLWRAP) ocaml -I $(BUILDDIR) $(OCAMLCFLAGS) zlib.cma
 
-$(if $(OCAMLC),$(BUILDDIR)/zlib.cma) \
-$(if $(OCAMLOPT),$(BUILDDIR)/zlib.cmxa)&: \
+$(and $(OCAMLC),$(BUILDDIR)/zlib.cma) \
+$(and $(OCAMLOPT),$(BUILDDIR)/zlib.cmxa)&: \
 		../source/zlib*
 	$(MAKE) -C ../source install \
 		BUILDDIR=$(abspath $(ZLIB_BUILDDIR)) \
@@ -85,7 +75,7 @@ $(BINLN):
 	ln -s $(BUILDDIR) $@
 
 clean:
-	-$(if $(BINLN),[ -h "$(BINLN)" ] && rm "$(BINLN)")
+	-$(and $(BINLN),[ -h "$(BINLN)" ] && rm "$(BINLN)")
 	-$(MAKE) -C ../source clean uninstall \
 		BUILDDIR=$(abspath $(ZLIB_BUILDDIR)) \
 		INSTALLDIR=$(abspath $(BUILDDIR))
