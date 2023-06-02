@@ -75,7 +75,7 @@ interactive: $(BUILDDIR)/zlib.cma
 
 $(if $(OCAMLC),$(BUILDDIR)/zlib.cma) \
 $(if $(OCAMLOPT),$(BUILDDIR)/zlib.cmxa)&: \
-		$(wildcard ../source/zlib*)
+		../source/zlib*
 	$(MAKE) -C ../source install \
 		BUILDDIR=$(abspath $(ZLIB_BUILDDIR)) \
 		INSTALLDIR=$(abspath $(BUILDDIR))
