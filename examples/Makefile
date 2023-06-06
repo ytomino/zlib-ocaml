@@ -45,13 +45,15 @@ $(BUILDDIR)/mlzlib.cmx: mlzlib/mlzlib.ml $(BUILDDIR)/zlib.cmxa
 
 $(BUILDDIR)/%.byte.exe: mlzlib/%.ml $(BUILDDIR)/mlzlib.cmo
 	$(OCAMLC) -c -o $(BUILDDIR)/$*.cmo -I $(BUILDDIR) $(OCAMLCFLAGS) $<
-	$(OCAMLC) -o $@ -I $(BUILDDIR) \
-		unix.cma zlib.cma $(BUILDDIR)/mlzlib.cmo $(BUILDDIR)/$*.cmo
+	$(OCAMLC) $(strip \
+		-o $@ -I $(BUILDDIR) unix.cma zlib.cma \
+		$(BUILDDIR)/mlzlib.cmo $(BUILDDIR)/$*.cmo)
 
 $(BUILDDIR)/%.opt.exe: mlzlib/%.ml $(BUILDDIR)/mlzlib.cmx
 	$(OCAMLOPT) -c -o $(BUILDDIR)/$*.cmx -I $(BUILDDIR) $(OCAMLOPTFLAGS) $<
-	$(OCAMLOPT) -o $@ -I $(BUILDDIR) \
-		unix.cmxa zlib.cmxa $(BUILDDIR)/mlzlib.cmx $(BUILDDIR)/$*.cmx
+	$(OCAMLOPT) $(strip \
+		-o $@ -I $(BUILDDIR) unix.cmxa zlib.cmxa \
+		$(BUILDDIR)/mlzlib.cmx $(BUILDDIR)/$*.cmx)
 
 check: all $(TESTS)
 
@@ -67,18 +69,20 @@ interactive: $(BUILDDIR)/zlib.cma
 $(and $(OCAMLC),$(BUILDDIR)/zlib.cma) \
 $(and $(OCAMLOPT),$(BUILDDIR)/zlib.cmxa)&: \
 		../source/zlib*
-	$(MAKE) -C ../source install \
+	$(MAKE) $(strip \
+		-C ../source install \
 		BUILDDIR=$(abspath $(ZLIB_BUILDDIR)) \
-		INSTALLDIR=$(abspath $(BUILDDIR))
+		INSTALLDIR=$(abspath $(BUILDDIR)))
 
 $(BINLN):
 	ln -s $(BUILDDIR) $@
 
 clean:
 	-$(and $(BINLN),[ -h "$(BINLN)" ] && rm "$(BINLN)")
-	-$(MAKE) -C ../source clean uninstall \
+	-$(MAKE) $(strip \
+		-C ../source clean uninstall \
 		BUILDDIR=$(abspath $(ZLIB_BUILDDIR)) \
-		INSTALLDIR=$(abspath $(BUILDDIR))
+		INSTALLDIR=$(abspath $(BUILDDIR)))
 	-rm $(BUILDDIR)/*.exe $(BUILDDIR)/*.cm? $(BUILDDIR)/*.o
 	-rmdir $(BUILDDIR)/stublibs
 	-rmdir $(BUILDDIR)
