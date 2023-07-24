@@ -25,8 +25,7 @@ let src = read_file "test_gz.ml";; (* this file *)
 let gz = (
 	let buf = Buffer.create 1024 in
 	let w = Zlib.deflate_init_out (Buffer.add_substring buf) in
-	let used = Zlib.deflate_out w src 0 (String.length src) in
-	assert (used = String.length src);
+	Zlib.deflate_output_substring w src 0 (String.length src);
 	Zlib.deflate_end_out w;
 	Buffer.contents buf
 );;
@@ -69,8 +68,7 @@ assert (src = dest);;
 let gz = (
 	let buf = Buffer.create 1024 in
 	let w = Zlib.deflate_init_out ~header:`gzip (Buffer.add_substring buf) in
-	let used = Zlib.deflate_out w src 0 (String.length src) in
-	assert (used = String.length src);
+	Zlib.deflate_output_substring w src 0 (String.length src);
 	Zlib.deflate_end_out w;
 	Buffer.contents buf
 );;

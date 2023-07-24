@@ -118,6 +118,14 @@ let deflate_init_out ?(level: int = z_default_compression)
 
 let deflate_out = make_out deflate;;
 
+let deflate_output_substring
+	(od: z_stream_s * bytes * (string -> int -> int -> unit))
+	(s: string) (pos: int) (len: int) =
+(
+	let r = deflate_out od s pos len in
+	if r <> len then failwith "Zlib.deflate_output_substring"
+);;
+
 let deflate_flush
 	(stream, buffer, output: z_stream_s * bytes * (string -> int -> int -> unit)) =
 (
