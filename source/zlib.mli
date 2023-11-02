@@ -12,7 +12,7 @@ type strategy =
 	| Z_FILTERED
 	| Z_HUFFMAN_ONLY
 	| Z_RLE
-	| Z_FIXED;;
+	| Z_FIXED
 
 type header = [`default | `raw | `gzip]
 
