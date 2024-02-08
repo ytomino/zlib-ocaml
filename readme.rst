@@ -9,7 +9,7 @@ Objective-Caml binding to zlib.
 Prerequisites
 -------------
 
-OCaml >= 4.08
+OCaml >= 4.11
  https://ocaml.org/
 zlib >= 1.0
  http://www.zlib.net/
