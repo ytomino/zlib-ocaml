@@ -40,5 +40,4 @@ val inflate_out: out_inflater -> string -> int -> int -> int
 val inflate_flush: out_inflater -> unit
 val inflate_end_out: out_inflater -> unit
 
-external crc32_substring: int32 -> string -> int -> int -> int32 =
-	"mlzlib_crc32_substring"
+val crc32_substring: int32 -> string -> int -> int -> int32

@@ -236,7 +236,8 @@ CAMLprim value mlzlib_inflate_end(value data)
 
 /* crc32 */
 
-CAMLprim value mlzlib_crc32_substring(value crc, value s, value pos, value len)
+CAMLprim value mlzlib_unsafe_crc32_substring(value crc, value s, value pos,
+	value len)
 {
 	CAMLparam4(crc, s, pos, len);
 	CAMLlocal1(result);

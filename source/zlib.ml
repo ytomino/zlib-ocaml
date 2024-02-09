@@ -116,14 +116,22 @@ let deflate_init_out ?(level: int = z_default_compression)
 	stream, buffer, output
 );;
 
-let deflate_out = make_out deflate;;
+let unsafe_deflate_out = make_out deflate;;
 
-let deflate_output_substring
-	(od: z_stream_s * bytes * (string -> int -> int -> unit))
-	(s: string) (pos: int) (len: int) =
+let deflate_out (od: out_deflater) (s: string) (pos: int) (len: int) = (
+	if pos >= 0 && len >= 0 && pos + len <= String.length s
+	then unsafe_deflate_out od s pos len
+	else invalid_arg "Zlib.deflate_out" (* __FUNCTION__ *)
+);;
+
+let deflate_output_substring (od: out_deflater) (s: string) (pos: int)
+	(len: int) =
 (
-	let r = deflate_out od s pos len in
-	if r <> len then failwith "Zlib.deflate_output_substring"
+	let loc = "Zlib.deflate_output_substring" (* __FUNCTION__ *) in
+	if pos >= 0 && len >= 0 && pos + len <= String.length s then (
+		let r = unsafe_deflate_out od s pos len in
+		if r <> len then failwith loc
+	) else invalid_arg loc
 );;
 
 let deflate_flush
@@ -150,8 +158,9 @@ let inflate_init_in ?(header: [header | `auto] = `auto)
 	stream, buffer, input
 );;
 
-let inflate_in (stream, buffer, input: in_inflater) (s: bytes) (pos: int)
-	(len: int) =
+let unsafe_inflate_in
+	(stream, buffer, input: z_stream_s * bytes * (bytes -> int -> int -> int))
+	(s: bytes) (pos: int) (len: int) =
 (
 	set_out stream s pos len;
 	let rec loop rest = (
@@ -175,6 +184,12 @@ let inflate_in (stream, buffer, input: in_inflater) (s: bytes) (pos: int)
 	used
 );;
 
+let inflate_in (ii: in_inflater) (s: bytes) (pos: int) (len: int) = (
+	if pos >= 0 && len >= 0 && pos + len <= Bytes.length s
+	then unsafe_inflate_in ii s pos len
+	else invalid_arg "Zlib.inflate_in" (* __FUNCTION__ *)
+);;
+
 let inflate_end_in (stream, _, _: in_inflater) = (
 	inflate_end stream
 );;
@@ -191,11 +206,23 @@ let inflate_init_out ?(header: [header | `auto] = `auto)
 	stream, buffer, output
 );;
 
-let inflate_out = make_out inflate;;
+let unsafe_inflate_out = make_out inflate;;
+
+let inflate_out (oi: out_inflater) (s: string) (pos: int) (len: int) = (
+	if pos >= 0 && len >= 0 && pos + len <= String.length s
+	then unsafe_inflate_out oi s pos len
+	else invalid_arg "Zlib.inflate_out" (* __FUNCTION__ *)
+);;
 
 let inflate_flush = deflate_flush;;
 
 let inflate_end_out = make_end_out inflate inflate_end;;
 
-external crc32_substring: int32 -> string -> int -> int -> int32 =
-	"mlzlib_crc32_substring"
+external unsafe_crc32_substring: int32 -> string -> int -> int -> int32 =
+	"mlzlib_unsafe_crc32_substring"
+
+let crc32_substring (crc: int32) (s: string) (pos: int) (len: int) = (
+	if pos >= 0 && len >= 0 && pos + len <= String.length s
+	then unsafe_crc32_substring crc s pos len
+	else invalid_arg "Zlib.crc32_substring" (* __FUNCTION__ *)
+);;
