@@ -134,6 +134,12 @@ let deflate_output_substring (od: out_deflater) (s: string) (pos: int)
 	) else invalid_arg loc
 );;
 
+let deflate_output_string (od: out_deflater) (s: string) = (
+	let len = String.length s in
+	let r = unsafe_deflate_out od s 0 len in
+	if r <> len then failwith "Zlib.deflate_output_string" (* __FUNCTION__ *)
+);;
+
 let deflate_flush
 	(stream, buffer, output: z_stream_s * bytes * (string -> int -> int -> unit)) =
 (

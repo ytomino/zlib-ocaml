@@ -22,6 +22,7 @@ val deflate_init_out: ?level: int -> ?strategy: strategy -> ?header: header ->
 	(string -> int -> int -> unit) -> out_deflater
 val deflate_out: out_deflater -> string -> int -> int -> int
 val deflate_output_substring: out_deflater -> string -> int -> int -> unit
+val deflate_output_string: out_deflater -> string -> unit
 val deflate_flush: out_deflater -> unit
 val deflate_end_out: out_deflater -> unit
 

@@ -25,7 +25,7 @@ let src = read_file "test_gz.ml";; (* this file *)
 let gz = (
 	let buf = Buffer.create 1024 in
 	let w = Zlib.deflate_init_out (Buffer.add_substring buf) in
-	Zlib.deflate_output_substring w src 0 (String.length src);
+	Zlib.deflate_output_string w src;
 	Zlib.deflate_end_out w;
 	Buffer.contents buf
 );;
