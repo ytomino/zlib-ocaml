@@ -42,3 +42,4 @@ val inflate_flush: out_inflater -> unit
 val inflate_end_out: out_inflater -> unit
 
 val crc32_substring: int32 -> string -> int -> int -> int32
+val crc32_string: int32 -> string -> int32

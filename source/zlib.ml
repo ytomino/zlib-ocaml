@@ -232,3 +232,7 @@ let crc32_substring (crc: int32) (s: string) (pos: int) (len: int) = (
 	then unsafe_crc32_substring crc s pos len
 	else invalid_arg "Zlib.crc32_substring" (* __FUNCTION__ *)
 );;
+
+let crc32_string (crc: int32) (s: string) = (
+	unsafe_crc32_substring crc s 0 (String.length s)
+);;
