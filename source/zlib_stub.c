@@ -40,9 +40,9 @@ static long zstreams_hash(value v)
 
 /* version functions */
 
-CAMLprim value mlzlib_get_version_string(void)
+CAMLprim value mlzlib_get_version_string(value val_unit)
 {
-	CAMLparam0();
+	CAMLparam1(val_unit);
 	CAMLlocal1(val_result);
 	val_result = caml_copy_string(zlibVersion());
 	CAMLreturn(val_result);
