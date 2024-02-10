@@ -63,8 +63,8 @@ CAMLprim value mlzlib_set_in(
 {
 	CAMLparam4(val_stream, val_s, val_pos, val_len);
 	struct z_stream_s *stream = zstreams_val(val_stream);
-	stream->next_in = (Bytef *)String_val(val_s) + Int_val(val_pos);
-	stream->avail_in = Int_val(val_len);
+	stream->next_in = (Bytef *)String_val(val_s) + Long_val(val_pos);
+	stream->avail_in = (uInt)Long_val(val_len);
 	CAMLreturn(Val_unit);
 }
 
@@ -81,8 +81,8 @@ CAMLprim value mlzlib_set_out(
 {
 	CAMLparam4(val_stream, val_s, val_pos, val_len);
 	struct z_stream_s *stream = zstreams_val(val_stream);
-	stream->next_out = (Bytef *)String_val(val_s) + Int_val(val_pos);
-	stream->avail_out = Int_val(val_len);
+	stream->next_out = (Bytef *)String_val(val_s) + Long_val(val_pos);
+	stream->avail_out = (uInt)Long_val(val_len);
 	CAMLreturn(Val_unit);
 }
 
