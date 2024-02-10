@@ -28,14 +28,14 @@ static int zstreams_compare(value v1, value v2)
 	intptr_t la = (intptr_t)(Data_custom_val(v1));
 	intptr_t ra = (intptr_t)(Data_custom_val(v2));
 	int result = (la < ra)? -1 : (la > ra)? 1 : 0;
-	CAMLreturn(result);
+	CAMLreturnT(int, result);
 }
 
 static long zstreams_hash(value v)
 {
 	CAMLparam1(v);
 	long result = (intptr_t)(Data_custom_val(v));
-	CAMLreturn(result);
+	CAMLreturnT(long, result);
 }
 
 /* version functions */
