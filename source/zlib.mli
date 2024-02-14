@@ -7,12 +7,13 @@ val z_best_speed: int
 val z_best_compression: int
 val z_default_compression: int
 
-type strategy =
-	| Z_DEFAULT_STRATEGY
-	| Z_FILTERED
-	| Z_HUFFMAN_ONLY
-	| Z_RLE
-	| Z_FIXED
+type strategy = [
+	| `DEFAULT_STRATEGY
+	| `FILTERED
+	| `HUFFMAN_ONLY
+	| `RLE
+	| `FIXED
+]
 
 type header = [`default | `raw | `gzip]
 

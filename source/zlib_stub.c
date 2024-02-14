@@ -17,6 +17,24 @@ __attribute__((noreturn)) static void zlib_raise(int code)
 	}
 }
 
+static inline int Strategy_val(value v)
+{
+	switch(v){
+	case 0x2ddbee23:
+		return Z_DEFAULT_STRATEGY;
+	case -0x23e733d1: /* 0xdc18cc2f */
+		return Z_FILTERED;
+	case -0x36ec11c3: /* 0xc913ee3d */
+		return Z_HUFFMAN_ONLY;
+	case 0x007cf697:
+		return Z_RLE;
+	case -0x02df9d57: /* 0xfd2062a9 */
+		return Z_FIXED;
+	default:
+		caml_failwith(__FUNCTION__);
+	}
+}
+
 static inline struct z_stream_s *zstreams_val(value v)
 {
 	return (struct z_stream_s *)(Data_custom_val(v));
@@ -130,7 +148,7 @@ CAMLprim value mlzlib_deflate_init(
 		Z_DEFLATED,
 		Int_val(val_window_bits),
 		8,
-		Int_val(val_strategy));
+		Strategy_val(val_strategy));
 	if(err != Z_OK) zlib_raise(err);
 	/* zalloc is used to determine the valid status. */
 	if(stream->zalloc == NULL) caml_failwith(__FUNCTION__);

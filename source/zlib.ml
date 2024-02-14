@@ -17,12 +17,13 @@ let z_best_speed = 1;;
 let z_best_compression = 9;;
 let z_default_compression = -1;;
 
-type strategy =
-	| Z_DEFAULT_STRATEGY (* 0 *)
-	| Z_FILTERED (* 1 *)
-	| Z_HUFFMAN_ONLY (* 2 *)
-	| Z_RLE (* 3 *)
-	| Z_FIXED;; (* 4 *)
+type strategy = [
+	| `DEFAULT_STRATEGY
+	| `FILTERED
+	| `HUFFMAN_ONLY
+	| `RLE
+	| `FIXED
+];;
 
 type z_stream_s;;
 
@@ -106,7 +107,7 @@ let make_end_out (translate_f: z_stream_s -> flush -> bool)
 type out_deflater = z_stream_s * bytes * (string -> int -> int -> unit);;
 
 let deflate_init_out ?(level: int = z_default_compression)
-	?(strategy: strategy = Z_DEFAULT_STRATEGY) ?(header: header = `default)
+	?(strategy: strategy = `DEFAULT_STRATEGY) ?(header: header = `default)
 	(output: string -> int -> int -> unit) =
 (
 	let window_bits = window_bits_of_header header in
