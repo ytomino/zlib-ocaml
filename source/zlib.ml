@@ -233,6 +233,8 @@ let inflate_in (ii: in_inflater) (s: bytes) (pos: int) (len: int) = (
 );;
 
 let inflate_end_in (stream, fields, _: in_inflater) = (
+	fields.next_out <- Bytes.empty;
+	fields.avail_out <- 0;
 	inflate_end stream fields
 );;
 
