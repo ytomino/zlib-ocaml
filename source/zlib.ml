@@ -33,8 +33,9 @@ type fields = {
 	mutable avail_in: int;
 	mutable next_out: bytes;
 	mutable next_out_offset: int;
-	mutable avail_out: int
-};;
+	mutable avail_out: int;
+	mutable stream_end: bool
+} [@@ocaml.warning "-69"] (* suppress "Unused record field." *);;
 
 external ended: z_stream_s -> bool = "mlzlib_ended";;
 
@@ -65,7 +66,8 @@ let init_fields_out () = (
 		avail_in = 0;
 		next_out;
 		next_out_offset = 0;
-		avail_out = Bytes.length next_out
+		avail_out = Bytes.length next_out;
+		stream_end = false
 	}
 );;
 
@@ -189,6 +191,7 @@ let inflate_init_in ?(header: [header | `auto] = `auto)
 		next_out = Bytes.empty;
 		next_out_offset = 0;
 		avail_out = 0;
+		stream_end = false
 	}
 	in
 	stream, fields, input
@@ -259,6 +262,12 @@ let inflate_out (oi: out_inflater) (s: string) (pos: int) (len: int) = (
 let inflate_flush = deflate_flush;;
 
 let inflate_end_out = make_end_out inflate inflate_end;;
+
+let is_inflated_out
+	(_, fields, _: z_stream_s * fields * (string -> int -> int -> unit)) =
+(
+	fields.stream_end
+);;
 
 external unsafe_crc32_substring: int32 -> string -> int -> int -> int32 =
 	"mlzlib_unsafe_crc32_substring"

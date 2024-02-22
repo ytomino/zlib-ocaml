@@ -38,16 +38,17 @@ let zlib_inflateEnd = make_deflate_or_inflate_end Zlib.inflate_end_out;;
 
 type z_flush = Z_NO_FLUSH | Z_SYNC_FLUSH | Z_FINISH;;
 
-let make_deflate_or_inflate out_f end_f (writer, buffer, stream_end)
+let make_deflate_or_inflate out_f flush_f end_f completed_f
+	(writer, buffer, stream_end)
 	(flush: z_flush) in_s in_offset in_length out_s out_offset out_length =
 (
 	let used_in =
 		if !stream_end then 0 else
 		let used_in = out_f writer in_s in_offset in_length in
-		if used_in = 0 then (
+		if used_in = 0 && (flush = Z_FINISH || completed_f writer) then (
 			stream_end := true;
 			end_f writer
-		);
+		) else flush_f writer;
 		used_in
 	in
 	let used_out = min (Buffer.length buffer) out_length in
@@ -60,9 +61,11 @@ let make_deflate_or_inflate out_f end_f (writer, buffer, stream_end)
 );;
 
 let zlib_deflate =
-	make_deflate_or_inflate Zlib.deflate_out Zlib.deflate_end_out;;
+	make_deflate_or_inflate Zlib.deflate_out Zlib.deflate_flush
+		Zlib.deflate_end_out (fun _ -> false);;
 
 let zlib_inflate =
-	make_deflate_or_inflate Zlib.inflate_out Zlib.inflate_end_out;;
+	make_deflate_or_inflate Zlib.inflate_out Zlib.inflate_flush
+		Zlib.inflate_end_out Zlib.is_inflated_out;;
 
 let crc32 acc s len = Zlib.crc32_substring acc s 0 len;;
