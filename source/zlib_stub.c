@@ -35,9 +35,9 @@ static inline int Strategy_val(value v)
 	}
 }
 
-static inline struct z_stream_s *zstreams_val(value v)
+static inline struct z_stream_s **pZstreams_val(value v)
 {
-	return (struct z_stream_s *)(Data_custom_val(v));
+	return (struct z_stream_s **)(Data_custom_val(v));
 }
 
 static void set_fields(struct z_stream_s *stream, value val_fields)
@@ -65,8 +65,8 @@ static void get_fields(value val_fields, struct z_stream_s const *stream)
 static int zstreams_compare(value v1, value v2)
 {
 	CAMLparam2(v1, v2);
-	intptr_t la = (intptr_t)(Data_custom_val(v1));
-	intptr_t ra = (intptr_t)(Data_custom_val(v2));
+	intptr_t la = (intptr_t)*(pZstreams_val(v1));
+	intptr_t ra = (intptr_t)*(pZstreams_val(v2));
 	int result = (la < ra)? -1 : (la > ra)? 1 : 0;
 	CAMLreturnT(int, result);
 }
@@ -74,7 +74,7 @@ static int zstreams_compare(value v1, value v2)
 static long zstreams_hash(value v)
 {
 	CAMLparam1(v);
-	long result = (intptr_t)(Data_custom_val(v));
+	long result = (intptr_t)*(pZstreams_val(v));
 	CAMLreturnT(long, result);
 }
 
@@ -93,7 +93,7 @@ CAMLprim value mlzlib_get_version_string(value val_unit)
 CAMLprim value mlzlib_ended(value val_stream)
 {
 	CAMLparam1(val_stream);
-	struct z_stream_s *stream = zstreams_val(val_stream);
+	struct z_stream_s *stream = *pZstreams_val(val_stream);
 	bool result = stream->zalloc == NULL;
 	CAMLreturn(Val_bool(result));
 }
@@ -103,9 +103,12 @@ CAMLprim value mlzlib_ended(value val_stream)
 static void zstreams_deflate_finalize(value v)
 {
 	CAMLparam1(v);
-	struct z_stream_s *stream = zstreams_val(v);
-	if(stream->zalloc != NULL){
-		deflateEnd(stream);
+	struct z_stream_s *stream = *pZstreams_val(v);
+	if(stream != NULL){
+		if(stream->zalloc != NULL){
+			deflateEnd(stream);
+		}
+		caml_stat_free(stream);
 	}
 	CAMLreturn0;
 }
@@ -123,8 +126,11 @@ CAMLprim value mlzlib_deflate_init(
 {
 	CAMLparam3(val_level, val_strategy, val_window_bits);
 	CAMLlocal1(val_result);
-	val_result = caml_alloc_custom(&deflate_ops, sizeof(struct z_stream_s), 0, 1);
-	struct z_stream_s *stream = zstreams_val(val_result);
+	val_result = caml_alloc_custom(&deflate_ops, sizeof(void *), 0, 1);
+	struct z_stream_s **pstream = pZstreams_val(val_result);
+	*pstream = NULL; /* for the case that caml_stat_alloc fails */
+	*pstream = caml_stat_alloc(sizeof(struct z_stream_s));
+	struct z_stream_s *stream = *pstream;
 	stream->zalloc = NULL;
 	stream->zfree = NULL;
 	stream->opaque = NULL;
@@ -145,7 +151,7 @@ CAMLprim value mlzlib_deflate(
 	value val_stream, value val_fields, value val_flush)
 {
 	CAMLparam3(val_stream, val_fields, val_flush);
-	struct z_stream_s *stream = zstreams_val(val_stream);
+	struct z_stream_s *stream = *pZstreams_val(val_stream);
 	set_fields(stream, val_fields);
 	int err = deflate(stream, Int_val(val_flush));
 	get_fields(val_fields, stream);
@@ -166,7 +172,7 @@ CAMLprim value mlzlib_deflate(
 CAMLprim value mlzlib_deflate_end(value val_stream, value val_fields)
 {
 	CAMLparam2(val_stream, val_fields);
-	struct z_stream_s *stream = zstreams_val(val_stream);
+	struct z_stream_s *stream = *pZstreams_val(val_stream);
 	if(stream->zalloc != NULL){
 		set_fields(stream, val_fields);
 		int err = deflateEnd(stream);
@@ -182,9 +188,12 @@ CAMLprim value mlzlib_deflate_end(value val_stream, value val_fields)
 static void zstreams_inflate_finalize(value v)
 {
 	CAMLparam1(v);
-	struct z_stream_s *stream = zstreams_val(v);
-	if(stream->zalloc != NULL){
-		inflateEnd(stream);
+	struct z_stream_s *stream = *pZstreams_val(v);
+	if(stream != NULL){
+		if(stream->zalloc != NULL){
+			inflateEnd(stream);
+		}
+		caml_stat_free(stream);
 	}
 	CAMLreturn0;
 }
@@ -201,8 +210,11 @@ CAMLprim value mlzlib_inflate_init(value val_window_bits)
 {
 	CAMLparam1(val_window_bits);
 	CAMLlocal1(val_result);
-	val_result = caml_alloc_custom(&inflate_ops, sizeof(struct z_stream_s), 0, 1);
-	struct z_stream_s *stream = zstreams_val(val_result);
+	val_result = caml_alloc_custom(&inflate_ops, sizeof(void *), 0, 1);
+	struct z_stream_s **pstream = pZstreams_val(val_result);
+	*pstream = NULL; /* for the case that caml_stat_alloc fails */
+	*pstream = caml_stat_alloc(sizeof(struct z_stream_s));
+	struct z_stream_s *stream = *pstream;
 	stream->zalloc = NULL;
 	stream->zfree = NULL;
 	stream->opaque = NULL;
@@ -219,7 +231,7 @@ CAMLprim value mlzlib_inflate(
 	value val_stream, value val_fields, value val_flush)
 {
 	CAMLparam3(val_stream, val_fields, val_flush);
-	struct z_stream_s *stream = zstreams_val(val_stream);
+	struct z_stream_s *stream = *pZstreams_val(val_stream);
 	set_fields(stream, val_fields);
 	int err = inflate(stream, Int_val(val_flush));
 	get_fields(val_fields, stream);
@@ -240,7 +252,7 @@ CAMLprim value mlzlib_inflate(
 CAMLprim value mlzlib_inflate_end(value val_stream, value val_fields)
 {
 	CAMLparam2(val_stream, val_fields);
-	struct z_stream_s *stream = zstreams_val(val_stream);
+	struct z_stream_s *stream = *pZstreams_val(val_stream);
 	if(stream->zalloc != NULL){
 		set_fields(stream, val_fields);
 		int err = inflateEnd(stream);
