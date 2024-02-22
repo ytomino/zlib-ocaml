@@ -8,7 +8,9 @@ let zlib_deflateInit level = (
 		| Z_DEFAULT_COMPRESSION -> Zlib.z_default_compression
 	in
 	let buffer = Buffer.create 0 in
-	Zlib.deflate_init_out ~level (Buffer.add_substring buffer), buffer, ref false
+	Zlib.deflate_init_out ~level (Buffer.add_substring buffer) ~header:`gzip,
+	buffer,
+	ref false
 );;
 
 let zlib_inflateInit2 window_bits = (
@@ -17,13 +19,14 @@ let zlib_inflateInit2 window_bits = (
 		| 15 -> `default
 		| -15 -> `raw
 		| 31 -> `gzip
+		| 47 -> `auto
 		| _ -> assert false
 	in
 	let buffer = Buffer.create 0 in
 	Zlib.inflate_init_out ~header (Buffer.add_substring buffer), buffer, ref false
 );;
 
-let zlib_inflateInit () = zlib_inflateInit2 15;;
+let zlib_inflateInit () = zlib_inflateInit2 47;;
 
 let make_deflate_or_inflate_end end_f (writer, (_: Buffer.t), stream_end) = (
 	if not !stream_end then end_f writer
