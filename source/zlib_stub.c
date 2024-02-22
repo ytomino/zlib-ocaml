@@ -40,6 +40,28 @@ static inline struct z_stream_s *zstreams_val(value v)
 	return (struct z_stream_s *)(Data_custom_val(v));
 }
 
+static void set_fields(struct z_stream_s *stream, value val_fields)
+{
+	long next_in_offset = Long_val(Field(val_fields, 1));
+	stream->next_in = (Bytef *)String_val(Field(val_fields, 0)) + next_in_offset;
+	stream->avail_in = Long_val(Field(val_fields, 2));
+	long next_out_offset = Long_val(Field(val_fields, 4));
+	stream->next_out = (Bytef *)Bytes_val(Field(val_fields, 3)) + next_out_offset;
+	stream->avail_out = Long_val(Field(val_fields, 5));
+}
+
+static void get_fields(value val_fields, struct z_stream_s const *stream)
+{
+	long next_in_offset =
+		stream->next_in - (Bytef *)String_val(Field(val_fields, 0));
+	Store_field(val_fields, 1, Val_long(next_in_offset));
+	Store_field(val_fields, 2, Val_long(stream->avail_in));
+	long next_out_offset =
+		stream->next_out - (Bytef *)Bytes_val(Field(val_fields, 3));
+	Store_field(val_fields, 4, Val_long(next_out_offset));
+	Store_field(val_fields, 5, Val_long(stream->avail_out));
+}
+
 static int zstreams_compare(value v1, value v2)
 {
 	CAMLparam2(v1, v2);
@@ -67,42 +89,6 @@ CAMLprim value mlzlib_get_version_string(value val_unit)
 }
 
 /* internal functions */
-
-CAMLprim value mlzlib_avail_in(value val_stream)
-{
-	CAMLparam1(val_stream);
-	struct z_stream_s *stream = zstreams_val(val_stream);
-	int result = stream->avail_in;
-	CAMLreturn(Val_int(result));
-}
-
-CAMLprim value mlzlib_set_in(
-	value val_stream, value val_s, value val_pos, value val_len)
-{
-	CAMLparam4(val_stream, val_s, val_pos, val_len);
-	struct z_stream_s *stream = zstreams_val(val_stream);
-	stream->next_in = (Bytef *)String_val(val_s) + Long_val(val_pos);
-	stream->avail_in = (uInt)Long_val(val_len);
-	CAMLreturn(Val_unit);
-}
-
-CAMLprim value mlzlib_avail_out(value val_stream)
-{
-	CAMLparam1(val_stream);
-	struct z_stream_s *stream = zstreams_val(val_stream);
-	int result = stream->avail_out;
-	CAMLreturn(Val_int(result));
-}
-
-CAMLprim value mlzlib_set_out(
-	value val_stream, value val_s, value val_pos, value val_len)
-{
-	CAMLparam4(val_stream, val_s, val_pos, val_len);
-	struct z_stream_s *stream = zstreams_val(val_stream);
-	stream->next_out = (Bytef *)String_val(val_s) + Long_val(val_pos);
-	stream->avail_out = (uInt)Long_val(val_len);
-	CAMLreturn(Val_unit);
-}
 
 CAMLprim value mlzlib_ended(value val_stream)
 {
@@ -155,11 +141,14 @@ CAMLprim value mlzlib_deflate_init(
 	CAMLreturn(val_result);
 }
 
-CAMLprim value mlzlib_deflate(value val_stream, value val_flush)
+CAMLprim value mlzlib_deflate(
+	value val_stream, value val_fields, value val_flush)
 {
-	CAMLparam2(val_stream, val_flush);
+	CAMLparam3(val_stream, val_fields, val_flush);
 	struct z_stream_s *stream = zstreams_val(val_stream);
+	set_fields(stream, val_fields);
 	int err = deflate(stream, Int_val(val_flush));
+	get_fields(val_fields, stream);
 	bool result;
 	switch(err){
 	case Z_OK:
@@ -174,12 +163,14 @@ CAMLprim value mlzlib_deflate(value val_stream, value val_flush)
 	CAMLreturn(Val_bool(result));
 }
 
-CAMLprim value mlzlib_deflate_end(value val_stream)
+CAMLprim value mlzlib_deflate_end(value val_stream, value val_fields)
 {
-	CAMLparam1(val_stream);
+	CAMLparam2(val_stream, val_fields);
 	struct z_stream_s *stream = zstreams_val(val_stream);
 	if(stream->zalloc != NULL){
+		set_fields(stream, val_fields);
 		int err = deflateEnd(stream);
+		get_fields(val_fields, stream);
 		if(err != Z_OK) zlib_raise(err);
 		stream->zalloc = NULL;
 	}
@@ -224,11 +215,14 @@ CAMLprim value mlzlib_inflate_init(value val_window_bits)
 	CAMLreturn(val_result);
 }
 
-CAMLprim value mlzlib_inflate(value val_stream, value val_flush)
+CAMLprim value mlzlib_inflate(
+	value val_stream, value val_fields, value val_flush)
 {
-	CAMLparam2(val_stream, val_flush);
+	CAMLparam3(val_stream, val_fields, val_flush);
 	struct z_stream_s *stream = zstreams_val(val_stream);
+	set_fields(stream, val_fields);
 	int err = inflate(stream, Int_val(val_flush));
+	get_fields(val_fields, stream);
 	bool result;
 	switch(err){
 	case Z_OK:
@@ -243,12 +237,14 @@ CAMLprim value mlzlib_inflate(value val_stream, value val_flush)
 	CAMLreturn(Val_bool(result));
 }
 
-CAMLprim value mlzlib_inflate_end(value val_stream)
+CAMLprim value mlzlib_inflate_end(value val_stream, value val_fields)
 {
-	CAMLparam1(val_stream);
+	CAMLparam2(val_stream, val_fields);
 	struct z_stream_s *stream = zstreams_val(val_stream);
 	if(stream->zalloc != NULL){
+		set_fields(stream, val_fields);
 		int err = inflateEnd(stream);
+		get_fields(val_fields, stream);
 		if(err != Z_OK) zlib_raise(err);
 		stream->zalloc = NULL;
 	}

@@ -27,21 +27,25 @@ type strategy = [
 
 type z_stream_s;;
 
-external avail_in: z_stream_s -> int = "mlzlib_avail_in";;
-external set_in: z_stream_s -> string -> int -> int -> unit = "mlzlib_set_in";;
-external avail_out: z_stream_s -> int = "mlzlib_avail_out";;
-external set_out: z_stream_s -> bytes -> int -> int -> unit =
-	"mlzlib_set_out";;
+type fields = {
+	mutable next_in: string;
+	mutable next_in_offset: int;
+	mutable avail_in: int;
+	mutable next_out: bytes;
+	mutable next_out_offset: int;
+	mutable avail_out: int
+};;
+
 external ended: z_stream_s -> bool = "mlzlib_ended";;
 
 external deflate_init: int -> strategy -> int -> z_stream_s =
 	"mlzlib_deflate_init";;
-external deflate: z_stream_s -> flush -> bool = "mlzlib_deflate";;
-external deflate_end: z_stream_s -> unit = "mlzlib_deflate_end";;
+external deflate: z_stream_s -> fields -> flush -> bool = "mlzlib_deflate";;
+external deflate_end: z_stream_s -> fields -> unit = "mlzlib_deflate_end";;
 
 external inflate_init: int -> z_stream_s = "mlzlib_inflate_init";;
-external inflate: z_stream_s -> flush -> bool = "mlzlib_inflate";;
-external inflate_end: z_stream_s -> unit = "mlzlib_inflate_end";;
+external inflate: z_stream_s -> fields -> flush -> bool = "mlzlib_inflate";;
+external inflate_end: z_stream_s -> fields -> unit = "mlzlib_inflate_end";;
 
 type header = [`default | `raw | `gzip];;
 
@@ -53,58 +57,77 @@ let window_bits_of_header (header: [< header | `auto]) = (
 	| `auto -> 47
 );;
 
-let make_out (translate_f: z_stream_s -> flush -> bool)
-	(stream, buffer, output: z_stream_s * bytes * (string -> int -> int -> unit))
+let init_fields_out () = (
+	let next_out = Bytes.create (1 lsl 15) in
+	{
+		next_in = "";
+		next_in_offset = 0;
+		avail_in = 0;
+		next_out;
+		next_out_offset = 0;
+		avail_out = Bytes.length next_out
+	}
+);;
+
+let make_out (translate_f: z_stream_s -> fields -> flush -> bool)
+	(stream, fields, output: z_stream_s * fields * (string -> int -> int -> unit))
 	(s: string) (pos: int) (len: int) =
 (
-	set_in stream s pos len;
+	fields.next_in <- s;
+	fields.next_in_offset <- pos;
+	fields.avail_in <- len;
 	let rec loop rest = (
 		if rest = 0 then rest else
-		let stream_end = translate_f stream Z_NO_FLUSH in
-		if avail_out stream = 0 then (
-			let buffer_length = Bytes.length buffer in
-			output (Bytes.unsafe_to_string buffer) 0 buffer_length;
-			set_out stream buffer 0 buffer_length
+		let stream_end = translate_f stream fields Z_NO_FLUSH in
+		if fields.avail_out = 0 then (
+			assert (fields.next_out_offset = Bytes.length fields.next_out);
+			output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset;
+			fields.avail_out <- fields.next_out_offset;
+			fields.next_out_offset <- 0
 		);
-		let rest = avail_in stream in
+		let rest = fields.avail_in in
 		if stream_end then rest
 		else loop rest
 	) in
 	let rest = loop len in
 	let used = len - rest in
+	assert (used = fields.next_in_offset - pos);
 	used
 );;
 
-let make_end_out (translate_f: z_stream_s -> flush -> bool)
-	(end_f: z_stream_s -> unit)
-	(stream, buffer, output: z_stream_s * bytes * (string -> int -> int -> unit)) =
+let make_end_out (translate_f: z_stream_s -> fields -> flush -> bool)
+	(end_f: z_stream_s -> fields -> unit)
+	(stream, fields, output: z_stream_s * fields * (string -> int -> int -> unit))
+	=
 (
 	if not (ended stream) then (
-		set_in stream "" 0 0;
+		fields.next_in <- "";
+		fields.avail_in <- 0;
 		let rec loop () = (
-			match translate_f stream Z_FINISH  with
+			match translate_f stream fields Z_FINISH  with
 			| _ as stream_end ->
-				let buffer_length = Bytes.length buffer in
-				let used_out = buffer_length - avail_out stream in
-				if used_out > 0 then (
-					output (Bytes.unsafe_to_string buffer) 0 used_out
+				if fields.next_out_offset > 0 then (
+					output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset
 				);
 				if stream_end then None
 				else (
-					if used_out > 0 then set_out stream buffer 0 buffer_length;
+					if fields.next_out_offset > 0 then (
+						fields.next_out_offset <- 0;
+						fields.avail_out <- Bytes.length fields.next_out
+					);
 					loop ()
 				)
 			| exception (Failure _ as exn) -> Some exn
 		) in
 		let exn_opt = loop () in
-		end_f stream;
+		end_f stream fields;
 		match exn_opt with
 		| Some exn -> raise exn
 		| None -> ()
 	)
 );;
 
-type out_deflater = z_stream_s * bytes * (string -> int -> int -> unit);;
+type out_deflater = z_stream_s * fields * (string -> int -> int -> unit);;
 
 let deflate_init_out ?(level: int = z_default_compression)
 	?(strategy: strategy = `DEFAULT_STRATEGY) ?(header: header = `default)
@@ -112,9 +135,7 @@ let deflate_init_out ?(level: int = z_default_compression)
 (
 	let window_bits = window_bits_of_header header in
 	let stream = deflate_init level strategy window_bits in
-	let buffer = Bytes.create (1 lsl 15) in
-	set_out stream buffer 0 (Bytes.length buffer);
-	stream, buffer, output
+	stream, init_fields_out (), output
 );;
 
 let unsafe_deflate_out = make_out deflate;;
@@ -142,52 +163,66 @@ let deflate_output_string (od: out_deflater) (s: string) = (
 );;
 
 let deflate_flush
-	(stream, buffer, output: z_stream_s * bytes * (string -> int -> int -> unit)) =
+	(_, fields, output: z_stream_s * fields * (string -> int -> int -> unit)) =
 (
-	let buffer_length = Bytes.length buffer in
-	let used_out = buffer_length - avail_out stream in
-	if used_out > 0 then (
-		output (Bytes.unsafe_to_string buffer) 0 used_out;
-		set_out stream buffer 0 buffer_length
+	if fields.next_out_offset > 0 then (
+		output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset;
+		fields.next_out_offset <- 0;
+		fields.avail_out <- Bytes.length fields.next_out
 	)
 );;
 
 let deflate_end_out = make_end_out deflate deflate_end;;
 
-type in_inflater = z_stream_s * bytes * (bytes -> int -> int -> int);;
+type in_inflater = z_stream_s * fields * (bytes -> int -> int -> int);;
 
 let inflate_init_in ?(header: [header | `auto] = `auto)
 	(input: bytes -> int -> int -> int) =
 (
 	let window_bits = window_bits_of_header header in
 	let stream = inflate_init window_bits in
-	let buffer = Bytes.create (1 lsl 15) in
-	stream, buffer, input
+	let next_in = Bytes.unsafe_to_string (Bytes.create (1 lsl 15)) in
+	let fields = {
+		next_in;
+		next_in_offset = 0;
+		avail_in = 0;
+		next_out = Bytes.empty;
+		next_out_offset = 0;
+		avail_out = 0;
+	}
+	in
+	stream, fields, input
 );;
 
 let unsafe_inflate_in
-	(stream, buffer, input: z_stream_s * bytes * (bytes -> int -> int -> int))
+	(stream, fields, input: z_stream_s * fields * (bytes -> int -> int -> int))
 	(s: bytes) (pos: int) (len: int) =
 (
-	set_out stream s pos len;
+	fields.next_out <- s;
+	fields.next_out_offset <- pos;
+	fields.avail_out <- len;
 	let rec loop rest = (
 		if rest = 0
 			|| (
-				avail_in stream = 0 && (
-					let rest_in = input buffer 0 (Bytes.length buffer) in
-					set_in stream (Bytes.unsafe_to_string buffer) 0 rest_in;
+				fields.avail_in = 0 && (
+					let rest_in =
+						input (Bytes.unsafe_of_string fields.next_in) 0 (String.length fields.next_in)
+					in
+					fields.next_in_offset <- 0;
+					fields.avail_in <- rest_in;
 					rest_in = 0
 				)
 			)
 		then rest
 		else
-		let stream_end = inflate stream Z_NO_FLUSH in
-		let rest = avail_out stream in
+		let stream_end = inflate stream fields Z_NO_FLUSH in
+		let rest = fields.avail_out in
 		if stream_end then rest
 		else loop rest
 	) in
 	let rest = loop len in
 	let used = len - rest in
+	assert (used = fields.next_out_offset - pos);
 	used
 );;
 
@@ -197,20 +232,18 @@ let inflate_in (ii: in_inflater) (s: bytes) (pos: int) (len: int) = (
 	else invalid_arg "Zlib.inflate_in" (* __FUNCTION__ *)
 );;
 
-let inflate_end_in (stream, _, _: in_inflater) = (
-	inflate_end stream
+let inflate_end_in (stream, fields, _: in_inflater) = (
+	inflate_end stream fields
 );;
 
-type out_inflater = z_stream_s * bytes * (string -> int -> int -> unit);;
+type out_inflater = z_stream_s * fields * (string -> int -> int -> unit);;
 
 let inflate_init_out ?(header: [header | `auto] = `auto)
 	(output: string -> int -> int -> unit) =
 (
 	let window_bits = window_bits_of_header header in
 	let stream = inflate_init window_bits in
-	let buffer = Bytes.create (1 lsl 15) in
-	set_out stream buffer 0 (Bytes.length buffer);
-	stream, buffer, output
+	stream, init_fields_out (), output
 );;
 
 let unsafe_inflate_out = make_out inflate;;
