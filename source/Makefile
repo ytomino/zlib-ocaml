@@ -14,7 +14,7 @@ WLFLAGS=$(and $(WITH_ZLIB),-L$(WITH_ZLIB)/lib)
 
 OCAMLCFLAGS=-w +a
 OCAMLOPTFLAGS=$(OCAMLCFLAGS)
-CFLAGS=$(WIFLAGS) -Wall -Wextra -Wno-unused-result
+CFLAGS=-Wall -Wextra -Wno-unused-result $(WIFLAGS)
 
 CCLIB=$(addprefix -cclib ,$(WLFLAGS) -lz)
 LDFLAGS=$(WLFLAGS)
