@@ -9,4 +9,4 @@ assert (Zlib.crc32_string 0l "ABC" = 0xA3830348l);;
 assert (Zlib.crc32_substring 99l "" 0 0 = 99l);;
 assert (Zlib.crc32_string 99l "" = 99l);;
 
-Printf.eprintf "ok\n";;
+prerr_endline "ok";;
