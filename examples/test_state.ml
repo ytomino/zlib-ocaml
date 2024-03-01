@@ -30,4 +30,4 @@ Zlib.inflate_end_out w;;
 
 (* report *)
 
-Printf.eprintf "ok\n";;
+prerr_endline "ok";;

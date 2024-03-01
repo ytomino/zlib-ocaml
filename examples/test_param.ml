@@ -13,4 +13,4 @@ assert (check_strategy `HUFFMAN_ONLY);
 assert (check_strategy `RLE);
 assert (check_strategy `FIXED);;
 
-Printf.eprintf "ok\n";;
+prerr_endline "ok";;
