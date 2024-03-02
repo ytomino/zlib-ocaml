@@ -9,6 +9,7 @@ OCAMLOPT=$(or $(filter-out $(OCAMLC),$(OCAMLC:c=opt)),$(PROGRAMPREFIX)ocamlopt)
 RLWRAP?=
 
 DEBUG=
+ASSERT=1
 
 OCAMLCFLAGS=$(and $(filter-out 0,$(DEBUG)),-g)
 OCAMLOPTFLAGS=$(OCAMLCFLAGS)
@@ -83,7 +84,8 @@ $(and $(OCAMLOPT),$(BUILDDIR)/zlib.cmxa)&: \
 	$(MAKE) $(strip \
 		-C ../source install \
 		BUILDDIR=$(abspath $(ZLIB_BUILDDIR)) \
-		INSTALLDIR=$(abspath $(BUILDDIR)))
+		INSTALLDIR=$(abspath $(BUILDDIR)) \
+		ASSERT=$(ASSERT))
 
 $(BINLN):
 	ln -s $(BUILDDIR) $@
