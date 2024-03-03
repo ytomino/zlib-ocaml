@@ -71,6 +71,13 @@ let init_fields_out () = (
 	}
 );;
 
+let reset_next_out (fields: fields) = (
+	fields.next_out_offset <- 0;
+	let next_out_length = Bytes.length fields.next_out in
+	fields.next_out <- Bytes.create next_out_length;
+	fields.avail_out <- next_out_length
+);;
+
 let make_out (translate_f: z_stream_s -> fields -> flush -> bool)
 	(stream, fields, output: z_stream_s * fields * (string -> int -> int -> unit))
 	(s: string) (pos: int) (len: int) =
@@ -82,10 +89,8 @@ let make_out (translate_f: z_stream_s -> fields -> flush -> bool)
 		if rest = 0 then rest else
 		let stream_end = translate_f stream fields Z_NO_FLUSH in
 		if fields.avail_out = 0 then (
-			assert (fields.next_out_offset = Bytes.length fields.next_out);
 			output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset;
-			fields.avail_out <- fields.next_out_offset;
-			fields.next_out_offset <- 0
+			reset_next_out fields
 		);
 		let rest = fields.avail_in in
 		if stream_end then rest
@@ -114,8 +119,7 @@ let make_end_out (translate_f: z_stream_s -> fields -> flush -> bool)
 				if stream_end then None
 				else (
 					if fields.next_out_offset > 0 then (
-						fields.next_out_offset <- 0;
-						fields.avail_out <- Bytes.length fields.next_out
+						reset_next_out fields
 					);
 					loop ()
 				)
@@ -169,8 +173,7 @@ let deflate_flush
 (
 	if fields.next_out_offset > 0 then (
 		output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset;
-		fields.next_out_offset <- 0;
-		fields.avail_out <- Bytes.length fields.next_out
+		reset_next_out fields
 	)
 );;
 
