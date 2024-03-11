@@ -27,7 +27,7 @@ let def source dest level =
 	    writeb dest buf_out 0 used_out;
 	    eprintf "DEF: used_in %d, used_out = %d, stream_end %s\n" 
 	       used_in used_out (if stream_end = true then "true" else "false");
-	    if used_in = size - pos_in then
+	    if used_in = size - pos_in && (flush <> Z_FINISH || stream_end) then
 	       ()
 	    else
 	       aux_def (pos_in + used_in)
