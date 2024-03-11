@@ -78,60 +78,58 @@ let reset_next_out (fields: fields) = (
 	fields.avail_out <- next_out_length
 );;
 
-let make_out (translate_f: z_stream_s -> fields -> flush -> bool)
-	(stream, fields, output: z_stream_s * fields * (string -> int -> int -> unit))
-	(s: string) (pos: int) (len: int) =
-(
-	fields.next_in <- s;
-	fields.next_in_offset <- pos;
-	fields.avail_in <- len;
-	let rec loop rest = (
-		if rest = 0 then rest else
+let make_out: (z_stream_s -> fields -> flush -> bool) ->
+	(z_stream_s * fields * (string -> int -> int -> unit)) -> string -> int ->
+	int -> int =
+	let rec loop translate_f o len rest = (
+		if rest = 0 then len - rest else
+		let stream, fields, output = o in
 		let stream_end = translate_f stream fields Z_NO_FLUSH in
 		if fields.avail_out = 0 then (
 			output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset;
 			reset_next_out fields
 		);
 		let rest = fields.avail_in in
-		if stream_end then rest
-		else loop rest
+		if stream_end then len - rest
+		else loop translate_f o len rest
 	) in
-	let rest = loop len in
-	let used = len - rest in
+	fun translate_f o s pos len ->
+	let _, fields, _ = o in
+	fields.next_in <- s;
+	fields.next_in_offset <- pos;
+	fields.avail_in <- len;
+	let used = loop translate_f o len len in
 	assert (used = fields.next_in_offset - pos);
-	used
-);;
+	used;;
 
-let make_end_out (translate_f: z_stream_s -> fields -> flush -> bool)
-	(end_f: z_stream_s -> fields -> unit)
-	(stream, fields, output: z_stream_s * fields * (string -> int -> int -> unit))
-	=
-(
+let make_end_out: (z_stream_s -> fields -> flush -> bool) ->
+	(z_stream_s -> fields -> unit) ->
+	(z_stream_s * fields * (string -> int -> int -> unit)) -> unit =
+	let rec loop translate_f end_f o = (
+		let stream, fields, output = o in
+		match translate_f stream fields Z_FINISH  with
+		| _ as stream_end ->
+			if fields.next_out_offset > 0 then (
+				output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset
+			);
+			if stream_end then end_f stream fields
+			else (
+				if fields.next_out_offset > 0 then (
+					reset_next_out fields
+				);
+				loop translate_f end_f o
+			)
+		| exception (Failure _ as exn) ->
+			end_f stream fields;
+			raise exn
+	) in
+	fun translate_f end_f o ->
+	let stream, fields, _ = o in
 	if not (ended stream) then (
 		fields.next_in <- "";
 		fields.avail_in <- 0;
-		let rec loop () = (
-			match translate_f stream fields Z_FINISH  with
-			| _ as stream_end ->
-				if fields.next_out_offset > 0 then (
-					output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset
-				);
-				if stream_end then None
-				else (
-					if fields.next_out_offset > 0 then (
-						reset_next_out fields
-					);
-					loop ()
-				)
-			| exception (Failure _ as exn) -> Some exn
-		) in
-		let exn_opt = loop () in
-		end_f stream fields;
-		match exn_opt with
-		| Some exn -> raise exn
-		| None -> ()
-	)
-);;
+		loop translate_f end_f o
+	);;
 
 type out_deflater = z_stream_s * fields * (string -> int -> int -> unit);;
 
@@ -200,14 +198,9 @@ let inflate_init_in ?(header: [header | `auto] = `auto)
 	stream, fields, input
 );;
 
-let unsafe_inflate_in
-	(stream, fields, input: z_stream_s * fields * (bytes -> int -> int -> int))
-	(s: bytes) (pos: int) (len: int) =
-(
-	fields.next_out <- s;
-	fields.next_out_offset <- pos;
-	fields.avail_out <- len;
-	let rec loop rest = (
+let unsafe_inflate_in: in_inflater -> bytes -> int -> int -> int =
+	let rec loop ii len rest = (
+		let stream, fields, input = ii in
 		if rest = 0
 			|| (
 				fields.avail_in = 0 && (
@@ -219,18 +212,21 @@ let unsafe_inflate_in
 					rest_in = 0
 				)
 			)
-		then rest
+		then len - rest
 		else
 		let stream_end = inflate stream fields Z_NO_FLUSH in
 		let rest = fields.avail_out in
-		if stream_end then rest
-		else loop rest
+		if stream_end then len - rest
+		else loop ii len rest
 	) in
-	let rest = loop len in
-	let used = len - rest in
+	fun ii s pos len ->
+	let _, fields, _ = ii in
+	fields.next_out <- s;
+	fields.next_out_offset <- pos;
+	fields.avail_out <- len;
+	let used = loop ii len len in
 	assert (used = fields.next_out_offset - pos);
-	used
-);;
+	used;;
 
 let inflate_in (ii: in_inflater) (s: bytes) (pos: int) (len: int) = (
 	if pos >= 0 && len >= 0 && pos + len <= Bytes.length s
