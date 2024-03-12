@@ -8,6 +8,12 @@ OCAMLC=$(PROGRAMPREFIX)ocamlc
 OCAMLOPT=$(or $(filter-out $(OCAMLC),$(OCAMLC:c=opt)),$(PROGRAMPREFIX)ocamlopt)
 RLWRAP?=
 
+ifndef OCAML_VERSION_MAJOR
+ OCAML_VERSION_MAJOR:=$(basename \
+                        $(basename \
+                          $(shell $(or $(OCAMLC),$(OCAMLOPT)) -version)))
+endif
+
 DEBUG=
 ASSERT=1
 
@@ -77,6 +83,10 @@ $(BUILDDIR)/%.opt.exe: mlzlib/%.ml $(BUILDDIR)/mlzlib.cmx
 		$(OCAMLOPTFLAGS_EXE) \
 		-o $@ $(OCAML_INCLUDE_FLAGS) unix.cmxa -I $(BUILDDIR) zlib.cmxa \
 		$(BUILDDIR)/mlzlib.cmx $(BUILDDIR)/$*.cmx)
+
+$(BUILDDIR)/gunzip_s.byte.exe $(BUILDDIR)/zpipe.byte.exe \
+$(BUILDDIR)/gunzip_s.opt.exe $(BUILDDIR)/zpipe.opt.exe: \
+	OCAML_INCLUDE_FLAGS+=$(and $(filter 5,$(OCAML_VERSION_MAJOR)),-I +unix)
 
 check: all $(TESTS)
 
