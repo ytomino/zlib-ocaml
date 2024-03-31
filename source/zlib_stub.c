@@ -62,6 +62,8 @@ static void get_fields(value val_fields, struct z_stream_s const *stream)
 	Store_field(val_fields, 5, Val_long(stream->avail_out));
 }
 
+#if defined(SUPPORT_COMPARISON)
+
 static int zstreams_compare(value v1, value v2)
 {
 	CAMLparam2(v1, v2);
@@ -77,6 +79,8 @@ static long zstreams_hash(value v)
 	long result = (intptr_t)*(pZstreams_val(v));
 	CAMLreturnT(long, result);
 }
+
+#endif
 
 /* version functions */
 
@@ -116,8 +120,13 @@ static void zstreams_deflate_finalize(value v)
 static struct custom_operations deflate_ops = {
 	.identifier = "jp.halfmoon.panathenaia.zlib",
 	.finalize = zstreams_deflate_finalize,
+#if defined(SUPPORT_COMPARISON)
 	.compare = zstreams_compare,
 	.hash = zstreams_hash,
+#else
+	.compare = custom_compare_default,
+	.hash = custom_hash_default,
+#endif
 	.serialize = custom_serialize_default,
 	.deserialize = custom_deserialize_default};
 
@@ -202,8 +211,13 @@ static void zstreams_inflate_finalize(value v)
 static struct custom_operations inflate_ops = {
 	.identifier = "jp.halfmoon.panathenaia.zlib",
 	.finalize = zstreams_inflate_finalize,
+#if defined(SUPPORT_COMPARISON)
 	.compare = zstreams_compare,
 	.hash = zstreams_hash,
+#else
+	.compare = custom_compare_default,
+	.hash = custom_hash_default,
+#endif
 	.serialize = custom_serialize_default,
 	.deserialize = custom_deserialize_default};
 

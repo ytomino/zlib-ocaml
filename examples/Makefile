@@ -16,6 +16,7 @@ endif
 
 DEBUG=
 ASSERT=1
+SUPPORT_COMPARISON=1
 
 OCAMLCFLAGS=$(and $(filter-out 0,$(DEBUG)),-g)
 OCAMLOPTFLAGS=$(OCAMLCFLAGS)
@@ -107,7 +108,8 @@ $(and $(OCAMLOPT),$(BUILDDIR)/zlib.cmxa)&: \
 		-C ../source install \
 		BUILDDIR=$(abspath $(ZLIB_BUILDDIR)) \
 		INSTALLDIR=$(abspath $(BUILDDIR)) \
-		ASSERT=$(ASSERT))
+		ASSERT=$(ASSERT) \
+		SUPPORT_COMPARISON=$(SUPPORT_COMPARISON))
 
 $(BINLN):
 	ln -s $(BUILDDIR) $@
