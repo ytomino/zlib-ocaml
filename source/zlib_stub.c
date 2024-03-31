@@ -118,7 +118,7 @@ static void zstreams_deflate_finalize(value v)
 }
 
 static struct custom_operations deflate_ops = {
-	.identifier = "jp.halfmoon.panathenaia.zlib",
+	.identifier = "jp.halfmoon.panathenaia.zlib.deflate",
 	.finalize = zstreams_deflate_finalize,
 #if defined(SUPPORT_COMPARISON)
 	.compare = zstreams_compare,
@@ -209,7 +209,7 @@ static void zstreams_inflate_finalize(value v)
 }
 
 static struct custom_operations inflate_ops = {
-	.identifier = "jp.halfmoon.panathenaia.zlib",
+	.identifier = "jp.halfmoon.panathenaia.zlib.inflate",
 	.finalize = zstreams_inflate_finalize,
 #if defined(SUPPORT_COMPARISON)
 	.compare = zstreams_compare,
