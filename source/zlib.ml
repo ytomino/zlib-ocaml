@@ -145,7 +145,7 @@ let deflate_init_out ?(level: int = z_default_compression)
 let unsafe_deflate_out = make_out deflate;;
 
 let deflate_out (od: out_deflater) (s: string) (pos: int) (len: int) = (
-	if pos >= 0 && len >= 0 && pos + len <= String.length s
+	if pos >= 0 && len >= 0 && len <= String.length s - pos
 	then unsafe_deflate_out od s pos len
 	else invalid_arg "Zlib.deflate_out" (* __FUNCTION__ *)
 );;
@@ -154,7 +154,7 @@ let deflate_output_substring (od: out_deflater) (s: string) (pos: int)
 	(len: int) =
 (
 	let loc = "Zlib.deflate_output_substring" (* __FUNCTION__ *) in
-	if pos >= 0 && len >= 0 && pos + len <= String.length s then (
+	if pos >= 0 && len >= 0 && len <= String.length s - pos then (
 		let r = unsafe_deflate_out od s pos len in
 		if r <> len then failwith loc
 	) else invalid_arg loc
@@ -229,7 +229,7 @@ let unsafe_inflate_in: in_inflater -> bytes -> int -> int -> int =
 	used;;
 
 let inflate_in (ii: in_inflater) (s: bytes) (pos: int) (len: int) = (
-	if pos >= 0 && len >= 0 && pos + len <= Bytes.length s
+	if pos >= 0 && len >= 0 && len <= Bytes.length s - pos
 	then unsafe_inflate_in ii s pos len
 	else invalid_arg "Zlib.inflate_in" (* __FUNCTION__ *)
 );;
@@ -253,7 +253,7 @@ let inflate_init_out ?(header: [header | `auto] = `auto)
 let unsafe_inflate_out = make_out inflate;;
 
 let inflate_out (oi: out_inflater) (s: string) (pos: int) (len: int) = (
-	if pos >= 0 && len >= 0 && pos + len <= String.length s
+	if pos >= 0 && len >= 0 && len <= String.length s - pos
 	then unsafe_inflate_out oi s pos len
 	else invalid_arg "Zlib.inflate_out" (* __FUNCTION__ *)
 );;
@@ -272,7 +272,7 @@ external unsafe_crc32_substring: int32 -> string -> int -> int -> int32 =
 	"mlzlib_unsafe_crc32_substring"
 
 let crc32_substring (crc: int32) (s: string) (pos: int) (len: int) = (
-	if pos >= 0 && len >= 0 && pos + len <= String.length s
+	if pos >= 0 && len >= 0 && len <= String.length s - pos
 	then unsafe_crc32_substring crc s pos len
 	else invalid_arg "Zlib.crc32_substring" (* __FUNCTION__ *)
 );;

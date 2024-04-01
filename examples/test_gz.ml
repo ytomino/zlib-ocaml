@@ -2,8 +2,9 @@ let verbose = Array.length Sys.argv > 1 && Sys.argv.(1) = "--verbose";;
 
 let read data cursor dest index length = (
 	let really_length = (
-		if !cursor + length <= String.length data then length else
-		String.length data - !cursor
+		let r = String.length data - !cursor in
+		if length <= r then length
+		else r
 	) in
 	Bytes.blit_string data !cursor dest index really_length;
 	cursor := !cursor + really_length;
