@@ -82,7 +82,7 @@ let make_out: (z_stream_s -> fields -> flush -> bool) ->
 	(z_stream_s * fields * (string -> int -> int -> unit)) -> string -> int ->
 	int -> int =
 	let rec loop translate_f o len rest = (
-		if rest = 0 then len - rest else
+		if rest = 0 then len else
 		let stream, fields, output = o in
 		let stream_end = translate_f stream fields Z_NO_FLUSH in
 		if fields.avail_out = 0 then (
