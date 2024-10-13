@@ -170,7 +170,6 @@ CAMLprim value mlzlib_deflate(
 		result = false;
 		break;
 	case Z_STREAM_END:
-		Store_field(val_fields, 6, Val_true);
 		result = true;
 		break;
 	default:
@@ -256,7 +255,6 @@ CAMLprim value mlzlib_inflate(
 		result = false;
 		break;
 	case Z_STREAM_END:
-		Store_field(val_fields, 6, Val_true);
 		result = true;
 		break;
 	default:

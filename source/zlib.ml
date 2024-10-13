@@ -33,9 +33,8 @@ type fields = {
 	mutable avail_in: int;
 	mutable next_out: bytes;
 	mutable next_out_offset: int;
-	mutable avail_out: int;
-	mutable stream_end: bool
-} [@@ocaml.warning "-69"] (* suppress "Unused record field." *);;
+	mutable avail_out: int
+};;
 
 external ended: z_stream_s -> bool = "mlzlib_ended";;
 
@@ -66,8 +65,7 @@ let init_fields_out () = (
 		avail_in = 0;
 		next_out;
 		next_out_offset = 0;
-		avail_out = Bytes.length next_out;
-		stream_end = false
+		avail_out = Bytes.length next_out
 	}
 );;
 
@@ -79,22 +77,24 @@ let reset_next_out (fields: fields) = (
 );;
 
 let make_out: (z_stream_s -> fields -> flush -> bool) ->
-	(z_stream_s * fields * (string -> int -> int -> unit)) -> string -> int ->
-	int -> int =
+	(z_stream_s * fields * bool ref * (string -> int -> int -> unit)) -> string ->
+	int -> int -> int =
 	let rec loop translate_f o len rest = (
 		if rest = 0 then len else
-		let stream, fields, output = o in
+		let stream, fields, stream_end_ref, output = o in
 		let stream_end = translate_f stream fields Z_NO_FLUSH in
 		if fields.avail_out = 0 then (
 			output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset;
 			reset_next_out fields
 		);
 		let rest = fields.avail_in in
-		if stream_end then len - rest
-		else loop translate_f o len rest
+		if stream_end then (
+			stream_end_ref := true;
+			len - rest
+		) else loop translate_f o len rest
 	) in
 	fun translate_f o s pos len ->
-	let _, fields, _ = o in
+	let _, fields, _, _ = o in
 	fields.next_in <- s;
 	fields.next_in_offset <- pos;
 	fields.avail_in <- len;
@@ -104,16 +104,18 @@ let make_out: (z_stream_s -> fields -> flush -> bool) ->
 
 let make_end_out: (z_stream_s -> fields -> flush -> bool) ->
 	(z_stream_s -> fields -> unit) ->
-	(z_stream_s * fields * (string -> int -> int -> unit)) -> unit =
+	(z_stream_s * fields * bool ref * (string -> int -> int -> unit)) -> unit =
 	let rec loop translate_f end_f o = (
-		let stream, fields, output = o in
+		let stream, fields, stream_end_ref, output = o in
 		match translate_f stream fields Z_FINISH  with
 		| _ as stream_end ->
 			if fields.next_out_offset > 0 then (
 				output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset
 			);
-			if stream_end then end_f stream fields
-			else (
+			if stream_end then (
+				stream_end_ref := true;
+				end_f stream fields
+			) else (
 				if fields.next_out_offset > 0 then (
 					reset_next_out fields
 				);
@@ -124,14 +126,15 @@ let make_end_out: (z_stream_s -> fields -> flush -> bool) ->
 			raise exn
 	) in
 	fun translate_f end_f o ->
-	let stream, fields, _ = o in
+	let stream, fields, _, _ = o in
 	if not (ended stream) then (
 		fields.next_in <- "";
 		fields.avail_in <- 0;
 		loop translate_f end_f o
 	);;
 
-type out_deflater = z_stream_s * fields * (string -> int -> int -> unit);;
+type out_deflater =
+	z_stream_s * fields * bool ref * (string -> int -> int -> unit);;
 
 let deflate_init_out ?(level: int = z_default_compression)
 	?(strategy: strategy = `DEFAULT_STRATEGY) ?(header: header = `default)
@@ -139,7 +142,7 @@ let deflate_init_out ?(level: int = z_default_compression)
 (
 	let window_bits = window_bits_of_header header in
 	let stream = deflate_init level strategy window_bits in
-	stream, init_fields_out (), output
+	stream, init_fields_out (), ref false, output
 );;
 
 let unsafe_deflate_out = make_out deflate;;
@@ -167,7 +170,9 @@ let deflate_output_string (od: out_deflater) (s: string) = (
 );;
 
 let deflate_flush
-	(_, fields, output: z_stream_s * fields * (string -> int -> int -> unit)) =
+	(_, fields, _, output:
+		z_stream_s * fields * bool ref * (string -> int -> int -> unit)
+	) =
 (
 	if fields.next_out_offset > 0 then (
 		output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset;
@@ -191,8 +196,7 @@ let inflate_init_in ?(header: [header | `auto] = `auto)
 		avail_in = 0;
 		next_out = Bytes.empty;
 		next_out_offset = 0;
-		avail_out = 0;
-		stream_end = false
+		avail_out = 0
 	}
 	in
 	stream, fields, input
@@ -240,14 +244,15 @@ let inflate_end_in (stream, fields, _: in_inflater) = (
 	inflate_end stream fields
 );;
 
-type out_inflater = z_stream_s * fields * (string -> int -> int -> unit);;
+type out_inflater =
+	z_stream_s * fields * bool ref * (string -> int -> int -> unit);;
 
 let inflate_init_out ?(header: [header | `auto] = `auto)
 	(output: string -> int -> int -> unit) =
 (
 	let window_bits = window_bits_of_header header in
 	let stream = inflate_init window_bits in
-	stream, init_fields_out (), output
+	stream, init_fields_out (), ref false, output
 );;
 
 let unsafe_inflate_out = make_out inflate;;
@@ -263,9 +268,11 @@ let inflate_flush = deflate_flush;;
 let inflate_end_out = make_end_out inflate inflate_end;;
 
 let is_inflated_out
-	(_, fields, _: z_stream_s * fields * (string -> int -> int -> unit)) =
+	(_, _, stream_end_ref, _:
+		z_stream_s * fields * bool ref * (string -> int -> int -> unit)
+	) =
 (
-	fields.stream_end
+	!stream_end_ref
 );;
 
 external unsafe_crc32_substring: int32 -> string -> int -> int -> int32 =
