@@ -18,7 +18,7 @@ OCAMLCFLAGS=$(and $(filter-out 0,$(DEBUG)),-g) $(if $(ASSERT),,-noassert) -w +a
 OCAMLOPTFLAGS=$(OCAMLCFLAGS)
 OCAML_INCLUDE_FLAGS=
 CFLAGS=$(and $(filter-out 0,$(DEBUG)),-g$(DEBUG)) \
-       $(and $(ASSERT),-DDEBUG -DNDEBUG) \
+       $(if $(ASSERT),-DDEBUG,-DNDEBUG) \
        $(and $(SUPPORT_COMPARISON),-DSUPPORT_COMPARISON) \
        -Wall -Wextra -Wno-unused-result
 C_INCLUDE_FLAGS=$(and $(WITH_ZLIB),-I$(WITH_ZLIB)/include)
