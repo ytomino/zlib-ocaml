@@ -77,7 +77,7 @@ let reset_next_out (fields: fields) = (
 );;
 
 let make_out: (z_stream_s -> fields -> flush -> bool) ->
-	(z_stream_s * fields * bool ref * (string -> int -> int -> unit)) -> string ->
+	z_stream_s * fields * bool ref * (string -> int -> int -> unit) -> string ->
 	int -> int -> int =
 	let rec loop translate_f o len rest = (
 		if rest = 0 then len else
@@ -104,7 +104,7 @@ let make_out: (z_stream_s -> fields -> flush -> bool) ->
 
 let make_end_out: (z_stream_s -> fields -> flush -> bool) ->
 	(z_stream_s -> fields -> unit) ->
-	(z_stream_s * fields * bool ref * (string -> int -> int -> unit)) -> unit =
+	z_stream_s * fields * bool ref * (string -> int -> int -> unit) -> unit =
 	let rec loop translate_f end_f o = (
 		let stream, fields, stream_end_ref, output = o in
 		match translate_f stream fields Z_FINISH  with
