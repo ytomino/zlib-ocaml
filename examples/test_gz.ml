@@ -80,7 +80,8 @@ let f = open_out_bin out_gz_name in
 output_string f gz;
 close_out f;
 ignore (
-	Sys.command ("gzip -c -d '" ^ out_gz_name ^ "' > '" ^ out_txt_name ^ "'"));
+	Sys.command ("gzip -c -d '" ^ out_gz_name ^ "' > '" ^ out_txt_name ^ "'")
+);
 let unzip = read_file out_txt_name in
 assert (unzip = src);
 Sys.remove out_gz_name;
