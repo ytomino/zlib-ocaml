@@ -41,11 +41,11 @@ external ended: z_stream_s -> bool = "mlzlib_ended";;
 external deflate_init: int -> strategy -> int -> z_stream_s =
 	"mlzlib_deflate_init";;
 external deflate: z_stream_s -> fields -> flush -> bool = "mlzlib_deflate";;
-external deflate_end: z_stream_s -> fields -> unit = "mlzlib_deflate_end";;
+external deflate_end: z_stream_s -> unit = "mlzlib_deflate_end";;
 
 external inflate_init: int -> z_stream_s = "mlzlib_inflate_init";;
 external inflate: z_stream_s -> fields -> flush -> bool = "mlzlib_inflate";;
-external inflate_end: z_stream_s -> fields -> unit = "mlzlib_inflate_end";;
+external inflate_end: z_stream_s -> unit = "mlzlib_inflate_end";;
 
 type header = [`default | `raw | `gzip];;
 
@@ -103,7 +103,7 @@ let make_out: (z_stream_s -> fields -> flush -> bool) ->
 	used;;
 
 let make_end_out: (z_stream_s -> fields -> flush -> bool) ->
-	(z_stream_s -> fields -> unit) ->
+	(z_stream_s -> unit) ->
 	z_stream_s * fields * bool ref * (string -> int -> int -> unit) -> unit =
 	let rec loop translate_f end_f o = (
 		let stream, fields, stream_end_ref, output = o in
@@ -114,7 +114,7 @@ let make_end_out: (z_stream_s -> fields -> flush -> bool) ->
 			);
 			if stream_end then (
 				stream_end_ref := true;
-				end_f stream fields
+				end_f stream
 			) else (
 				if fields.next_out_offset > 0 then (
 					reset_next_out fields
@@ -122,7 +122,7 @@ let make_end_out: (z_stream_s -> fields -> flush -> bool) ->
 				loop translate_f end_f o
 			)
 		| exception (Failure _ as exn) ->
-			end_f stream fields;
+			end_f stream;
 			raise exn
 	) in
 	fun translate_f end_f o ->
@@ -241,7 +241,7 @@ let inflate_in (ii: in_inflater) (s: bytes) (pos: int) (len: int) = (
 let inflate_end_in (stream, fields, _: in_inflater) = (
 	fields.next_out <- Bytes.empty;
 	fields.avail_out <- 0;
-	inflate_end stream fields
+	inflate_end stream
 );;
 
 type out_inflater =

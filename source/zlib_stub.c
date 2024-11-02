@@ -40,6 +40,14 @@ static inline struct z_stream_s **pZstreams_val(value v)
 	return (struct z_stream_s **)(Data_custom_val(v));
 }
 
+static void unset_fields(struct z_stream_s *stream)
+{
+	stream->next_in = NULL;
+	stream->avail_in = 0;
+	stream->next_out = NULL;
+	stream->avail_out = 0;
+}
+
 static void set_fields(struct z_stream_s *stream, value val_fields)
 {
 	long next_in_offset = Long_val(Field(val_fields, 1));
@@ -110,6 +118,7 @@ static void zstreams_deflate_finalize(value v)
 	struct z_stream_s *stream = *pZstreams_val(v);
 	if(stream != NULL){
 		if(stream->zalloc != NULL){
+			unset_fields(stream);
 			deflateEnd(stream);
 		}
 		caml_stat_free(stream);
@@ -178,14 +187,13 @@ CAMLprim value mlzlib_deflate(
 	CAMLreturn(Val_bool(result));
 }
 
-CAMLprim value mlzlib_deflate_end(value val_stream, value val_fields)
+CAMLprim value mlzlib_deflate_end(value val_stream)
 {
-	CAMLparam2(val_stream, val_fields);
+	CAMLparam1(val_stream);
 	struct z_stream_s *stream = *pZstreams_val(val_stream);
 	if(stream->zalloc != NULL){
-		set_fields(stream, val_fields);
+		unset_fields(stream);
 		int err = deflateEnd(stream);
-		get_fields(val_fields, stream);
 		if(err != Z_OK) zlib_raise(err);
 		stream->zalloc = NULL;
 	}
@@ -200,6 +208,7 @@ static void zstreams_inflate_finalize(value v)
 	struct z_stream_s *stream = *pZstreams_val(v);
 	if(stream != NULL){
 		if(stream->zalloc != NULL){
+			unset_fields(stream);
 			inflateEnd(stream);
 		}
 		caml_stat_free(stream);
@@ -263,14 +272,13 @@ CAMLprim value mlzlib_inflate(
 	CAMLreturn(Val_bool(result));
 }
 
-CAMLprim value mlzlib_inflate_end(value val_stream, value val_fields)
+CAMLprim value mlzlib_inflate_end(value val_stream)
 {
-	CAMLparam2(val_stream, val_fields);
+	CAMLparam1(val_stream);
 	struct z_stream_s *stream = *pZstreams_val(val_stream);
 	if(stream->zalloc != NULL){
-		set_fields(stream, val_fields);
+		unset_fields(stream);
 		int err = inflateEnd(stream);
-		get_fields(val_fields, stream);
 		if(err != Z_OK) zlib_raise(err);
 		stream->zalloc = NULL;
 	}
