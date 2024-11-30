@@ -36,7 +36,7 @@ EXAMPLES1=$(basename $(wildcard *.ml))
 EXAMPLES=$(EXAMPLES1) gunzip_s zpipe
 TESTS=$(filter test_%,$(EXAMPLES1))
 
-.PHONY: all check interacitve clean $(TESTS)
+.PHONY: all check interactive clean $(TESTS)
 
 all: \
 	$(and $(OCAMLC),$(patsubst %,$(BUILDDIR)/%.byte.exe,$(EXAMPLES))) \
