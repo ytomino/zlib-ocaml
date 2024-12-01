@@ -38,10 +38,9 @@ TESTS=$(filter test_%,$(EXAMPLES1))
 
 .PHONY: all check interactive clean $(TESTS)
 
-all: \
-	$(and $(OCAMLC),$(patsubst %,$(BUILDDIR)/%.byte.exe,$(EXAMPLES))) \
-	$(and $(OCAMLOPT),$(patsubst %,$(BUILDDIR)/%.opt.exe,$(EXAMPLES))) \
-	$(BINLN)
+all \
+: $(and $(OCAMLC),$(patsubst %,$(BUILDDIR)/%.byte.exe,$(EXAMPLES))) \
+  $(and $(OCAMLOPT),$(patsubst %,$(BUILDDIR)/%.opt.exe,$(EXAMPLES))) $(BINLN)
 
 $(BUILDDIR)/%.byte.exe: %.ml $(BUILDDIR)/zlib.cma
 	$(OCAMLC) $(strip \
@@ -86,14 +85,14 @@ $(BUILDDIR)/%.opt.exe: mlzlib/%.ml $(BUILDDIR)/mlzlib.cmx
 		$(BUILDDIR)/mlzlib.cmx $(BUILDDIR)/$*.cmx)
 
 $(BUILDDIR)/gunzip_s.byte.exe $(BUILDDIR)/zpipe.byte.exe \
-$(BUILDDIR)/gunzip_s.opt.exe $(BUILDDIR)/zpipe.opt.exe: \
-	OCAML_INCLUDE_FLAGS+=$(and $(filter 5,$(OCAML_VERSION_MAJOR)),-I +unix)
+$(BUILDDIR)/gunzip_s.opt.exe $(BUILDDIR)/zpipe.opt.exe \
+: OCAML_INCLUDE_FLAGS+=$(and $(filter 5,$(OCAML_VERSION_MAJOR)),-I +unix)
 
 check: all $(TESTS)
 
-$(TESTS): %: \
-		$(and $(OCAMLC),$(BUILDDIR)/%.byte.exe) \
-		$(and $(OCAMLOPT),$(BUILDDIR)/%.opt.exe)
+$(TESTS): % \
+: $(and $(OCAMLC),$(BUILDDIR)/%.byte.exe) \
+  $(and $(OCAMLOPT),$(BUILDDIR)/%.opt.exe)
 	$(and $(OCAMLC),$<)
 	$(and $(OCAMLOPT),$(BUILDDIR)/$*.opt.exe)
 
@@ -102,8 +101,8 @@ interactive: $(BUILDDIR)/zlib.cma
 		$(OCAMLCFLAGS) $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) zlib.cma)
 
 $(and $(OCAMLC),$(BUILDDIR)/zlib.cma) \
-$(and $(OCAMLOPT),$(BUILDDIR)/zlib.cmxa)&: \
-		../source/zlib*
+$(and $(OCAMLOPT),$(BUILDDIR)/zlib.cmxa) \
+&: ../source/zlib*
 	$(MAKE) $(strip \
 		-C ../source install \
 		BUILDDIR=$(abspath $(ZLIB_BUILDDIR)) \
