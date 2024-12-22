@@ -32,8 +32,8 @@ let gz = (
 );;
 
 if verbose then (
-	Printf.printf "%d/%d\n" (String.length gz) (String.length src);
-	flush stdout
+	Printf.eprintf "%d/%d\n" (String.length gz) (String.length src);
+	flush stderr
 );;
 
 (* in_inflater *)
