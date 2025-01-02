@@ -15,10 +15,12 @@ SUPPORT_COMPARISON=
 WITH_ZLIB?=
 
 OCAMLCFLAGS=$(and $(filter-out 0,$(DEBUG)),-g) $(if $(ASSERT),,-noassert) -w +a
-OCAMLOPTFLAGS=$(OCAMLCFLAGS)
+OCAMLOPTFLAGS=$(OCAMLCFLAGS) \
+              $(and $(filter-out false,$(FUNCTION_SECTIONS)), \
+                -function-sections)
 OCAML_INCLUDE_FLAGS=
-CFLAGS=$(and $(filter-out 0,$(DEBUG)),-g$(DEBUG)) \
-       $(if $(ASSERT),-DDEBUG,-DNDEBUG) \
+CFLAGS=$(and $(filter-out 0,$(DEBUG)),-g$(DEBUG)) $(if $(ASSERT),,-DNDEBUG) \
+       $(and $(filter-out false,$(FUNCTION_SECTIONS)),-ffunction-sections) \
        $(and $(SUPPORT_COMPARISON),-DSUPPORT_COMPARISON) -Wall -Wextra
 C_INCLUDE_FLAGS=$(and $(WITH_ZLIB),-I$(WITH_ZLIB)/include)
 
