@@ -110,8 +110,7 @@ $(TESTS): % \
 	$(and $(OCAMLOPT),$(BUILDDIR)/$*.opt.exe)
 
 interactive: $(BUILDDIR)/zlib.cma
-	$(RLWRAP) ocaml $(strip \
-		$(OCAMLCFLAGS) $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) zlib.cma)
+	$(RLWRAP) ocaml $(strip $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) zlib.cma)
 
 clean:
 	-$(and $(BINLN),[ -h "$(BINLN)" ] && rm "$(BINLN)")
