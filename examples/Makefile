@@ -44,37 +44,37 @@ all \
 
 $(BUILDDIR)/%.byte.exe: %.ml $(BUILDDIR)/zlib.cma
 	$(OCAMLC) $(strip \
-		-c $(OCAMLCFLAGS) \
-		-o $(BUILDDIR)/$*.cmo $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) $<)
+		-c $(OCAMLCFLAGS) -o $(BUILDDIR)/$*.cmo -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		$<)
 	$(OCAMLC) $(strip \
-		$(OCAMLCFLAGS_EXE) \
-		-o $@ $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) zlib.cma $(BUILDDIR)/$*.cmo)
+		$(OCAMLCFLAGS_EXE) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		zlib.cma $(BUILDDIR)/$*.cmo)
 
 $(BUILDDIR)/%.opt.exe: %.ml $(BUILDDIR)/zlib.cmxa
 	$(OCAMLOPT) $(strip \
 		-c $(OCAMLOPTFLAGS) \
-		-o $(BUILDDIR)/$*.cmx $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) $<)
+		-o $(BUILDDIR)/$*.cmx -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		$<)
 	$(OCAMLOPT) $(strip \
-		$(OCAMLOPTFLAGS_EXE) \
-		-o $@ $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) zlib.cmxa $(BUILDDIR)/$*.cmx)
+		$(OCAMLOPTFLAGS_EXE) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		zlib.cmxa $(BUILDDIR)/$*.cmx)
 
 $(BUILDDIR)/%.byte.exe: mlzlib/%.ml $(BUILDDIR)/mlzlib.cmo
 	$(OCAMLC) $(strip \
-		-c $(OCAMLCFLAGS) \
-		-o $(BUILDDIR)/$*.cmo $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) $<)
+		-c $(OCAMLCFLAGS) -o $(BUILDDIR)/$*.cmo -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		$<)
 	$(OCAMLC) $(strip \
-		$(OCAMLCFLAGS_EXE) \
-		-o $@ $(OCAML_INCLUDE_FLAGS) unix.cma -I $(BUILDDIR) zlib.cma \
-		$(BUILDDIR)/mlzlib.cmo $(BUILDDIR)/$*.cmo)
+		$(OCAMLCFLAGS_EXE) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		unix.cma zlib.cma $(BUILDDIR)/mlzlib.cmo $(BUILDDIR)/$*.cmo)
 
 $(BUILDDIR)/%.opt.exe: mlzlib/%.ml $(BUILDDIR)/mlzlib.cmx
 	$(OCAMLOPT) $(strip \
 		-c $(OCAMLOPTFLAGS) \
-		-o $(BUILDDIR)/$*.cmx $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) $<)
+		-o $(BUILDDIR)/$*.cmx -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		$<)
 	$(OCAMLOPT) $(strip \
-		$(OCAMLOPTFLAGS_EXE) \
-		-o $@ $(OCAML_INCLUDE_FLAGS) unix.cmxa -I $(BUILDDIR) zlib.cmxa \
-		$(BUILDDIR)/mlzlib.cmx $(BUILDDIR)/$*.cmx)
+		$(OCAMLOPTFLAGS_EXE) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		unix.cmxa zlib.cmxa $(BUILDDIR)/mlzlib.cmx $(BUILDDIR)/$*.cmx)
 
 $(BUILDDIR)/gunzip_s.byte.exe $(BUILDDIR)/zpipe.byte.exe \
 $(BUILDDIR)/gunzip_s.opt.exe $(BUILDDIR)/zpipe.opt.exe \
@@ -82,11 +82,11 @@ $(BUILDDIR)/gunzip_s.opt.exe $(BUILDDIR)/zpipe.opt.exe \
 
 $(BUILDDIR)/mlzlib.cmo: mlzlib/mlzlib.ml $(BUILDDIR)/zlib.cma
 	$(OCAMLC) $(strip \
-		-c $(OCAMLCFLAGS) -o $@ $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) $<)
+		-c $(OCAMLCFLAGS) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) $<)
 
 $(BUILDDIR)/mlzlib.cmx: mlzlib/mlzlib.ml $(BUILDDIR)/zlib.cmxa
 	$(OCAMLOPT) $(strip \
-		-c $(OCAMLOPTFLAGS) -o $@ $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) $<)
+		-c $(OCAMLOPTFLAGS) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) $<)
 
 $(and $(OCAMLC),$(BUILDDIR)/zlib.cma) \
 $(and $(OCAMLOPT),$(BUILDDIR)/zlib.cmxa) \
@@ -110,7 +110,7 @@ $(TESTS): % \
 	$(and $(OCAMLOPT),$(BUILDDIR)/$*.opt.exe)
 
 interactive: $(BUILDDIR)/zlib.cma
-	$(RLWRAP) ocaml $(strip $(OCAML_INCLUDE_FLAGS) -I $(BUILDDIR) zlib.cma)
+	$(RLWRAP) ocaml $(strip -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) zlib.cma)
 
 clean:
 	-$(and $(BINLN),[ -h "$(BINLN)" ] && rm "$(BINLN)")
