@@ -27,7 +27,15 @@ LDFLAGS?=
 
 BUILDSUFFIX=.noindex
 BUILDDIR=$(TARGET)$(BUILDSUFFIX)
+INSTALLDIR=$(BUILDDIR)
+
+OCAML_BUILDDIR_FLAGS=$(addprefix -I , \
+                       $(BUILDDIR) \
+                       $(filter-out $(BUILDDIR),$(INSTALLDIR)))
+
 ZLIB_BUILDDIR=$(BUILDDIR)/zlib$(BUILDSUFFIX)
+ZLIB_WORLD=$(and $(OCAMLC),$(INSTALLDIR)/zlib.cma) \
+           $(and $(OCAMLOPT),$(INSTALLDIR)/zlib.cmxa)
 
 BINLN=$(and $(filter $(BUILD),$(TARGET)), \
         $(if $(findstring mingw,$(BUILD))$(findstring msys,$(BUILD)),,bin))
@@ -36,70 +44,77 @@ EXAMPLES1=$(basename $(wildcard *.ml))
 EXAMPLES=$(EXAMPLES1) gunzip_s zpipe
 TESTS=$(filter test_%,$(EXAMPLES1))
 
-.PHONY: all check interactive clean $(TESTS)
+.PHONY: all world check interactive clean $(TESTS)
 
 all \
 : $(and $(OCAMLC),$(patsubst %,$(BUILDDIR)/%.byte.exe,$(EXAMPLES))) \
   $(and $(OCAMLOPT),$(patsubst %,$(BUILDDIR)/%.opt.exe,$(EXAMPLES))) $(BINLN)
 
-$(BUILDDIR)/%.byte.exe: %.ml $(BUILDDIR)/zlib.cma
+$(BUILDDIR)/%.byte.exe: %.ml $(INSTALLDIR)/zlib.cma | $(BUILDDIR)
 	$(OCAMLC) $(strip \
-		-c $(OCAMLCFLAGS) -o $(BUILDDIR)/$*.cmo -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		-c $(OCAMLCFLAGS) \
+		-o $(BUILDDIR)/$*.cmo $(OCAML_BUILDDIR_FLAGS) $(OCAML_INCLUDE_FLAGS) \
 		$<)
 	$(OCAMLC) $(strip \
-		$(OCAMLCFLAGS_EXE) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
-		zlib.cma $(BUILDDIR)/$*.cmo)
+		$(OCAMLCFLAGS_EXE) -o $@ $(OCAML_BUILDDIR_FLAGS) $(OCAML_INCLUDE_FLAGS) \
+		$(notdir $(filter-out $<,$^)) $*.cmo)
 
-$(BUILDDIR)/%.opt.exe: %.ml $(BUILDDIR)/zlib.cmxa
+$(BUILDDIR)/%.opt.exe: %.ml $(INSTALLDIR)/zlib.cmxa | $(BUILDDIR)
 	$(OCAMLOPT) $(strip \
 		-c $(OCAMLOPTFLAGS) \
-		-o $(BUILDDIR)/$*.cmx -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		-o $(BUILDDIR)/$*.cmx $(OCAML_BUILDDIR_FLAGS) $(OCAML_INCLUDE_FLAGS) \
 		$<)
 	$(OCAMLOPT) $(strip \
-		$(OCAMLOPTFLAGS_EXE) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
-		zlib.cmxa $(BUILDDIR)/$*.cmx)
+		$(OCAMLOPTFLAGS_EXE) -o $@ $(OCAML_BUILDDIR_FLAGS) $(OCAML_INCLUDE_FLAGS) \
+		$(notdir $(filter-out $<,$^)) $*.cmx)
 
-$(BUILDDIR)/%.byte.exe: mlzlib/%.ml $(BUILDDIR)/mlzlib.cmo
+$(BUILDDIR)/%.byte.exe \
+: mlzlib/%.ml $(INSTALLDIR)/zlib.cma $(BUILDDIR)/mlzlib.cmo
 	$(OCAMLC) $(strip \
-		-c $(OCAMLCFLAGS) -o $(BUILDDIR)/$*.cmo -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		-c $(OCAMLCFLAGS) \
+		-o $(BUILDDIR)/$*.cmo $(OCAML_BUILDDIR_FLAGS) $(OCAML_INCLUDE_FLAGS) \
 		$<)
 	$(OCAMLC) $(strip \
-		$(OCAMLCFLAGS_EXE) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
-		unix.cma zlib.cma $(BUILDDIR)/mlzlib.cmo $(BUILDDIR)/$*.cmo)
+		$(OCAMLCFLAGS_EXE) -o $@ $(OCAML_BUILDDIR_FLAGS) $(OCAML_INCLUDE_FLAGS) \
+		unix.cma $(notdir $(filter-out $<,$^)) $*.cmo)
 
-$(BUILDDIR)/%.opt.exe: mlzlib/%.ml $(BUILDDIR)/mlzlib.cmx
+$(BUILDDIR)/%.opt.exe \
+: mlzlib/%.ml $(INSTALLDIR)/zlib.cmxa $(BUILDDIR)/mlzlib.cmx
 	$(OCAMLOPT) $(strip \
 		-c $(OCAMLOPTFLAGS) \
-		-o $(BUILDDIR)/$*.cmx -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
+		-o $(BUILDDIR)/$*.cmx $(OCAML_BUILDDIR_FLAGS) $(OCAML_INCLUDE_FLAGS) \
 		$<)
 	$(OCAMLOPT) $(strip \
-		$(OCAMLOPTFLAGS_EXE) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) \
-		unix.cmxa zlib.cmxa $(BUILDDIR)/mlzlib.cmx $(BUILDDIR)/$*.cmx)
+		$(OCAMLOPTFLAGS_EXE) -o $@ $(OCAML_BUILDDIR_FLAGS) $(OCAML_INCLUDE_FLAGS) \
+		unix.cmxa $(notdir $(filter-out $<,$^)) $*.cmx)
 
 $(BUILDDIR)/gunzip_s.byte.exe $(BUILDDIR)/zpipe.byte.exe \
 $(BUILDDIR)/gunzip_s.opt.exe $(BUILDDIR)/zpipe.opt.exe \
 : OCAML_INCLUDE_FLAGS+=$(and $(filter 5,$(OCAML_VERSION_MAJOR)),-I +unix)
 
-$(BUILDDIR)/mlzlib.cmo: mlzlib/mlzlib.ml $(BUILDDIR)/zlib.cma
+$(BUILDDIR)/mlzlib.cmo: mlzlib/mlzlib.ml $(INSTALLDIR)/zlib.cma | $(BUILDDIR)
 	$(OCAMLC) $(strip \
-		-c $(OCAMLCFLAGS) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) $<)
+		-c $(OCAMLCFLAGS) -o $@ $(OCAML_BUILDDIR_FLAGS) $(OCAML_INCLUDE_FLAGS) $<)
 
-$(BUILDDIR)/mlzlib.cmx: mlzlib/mlzlib.ml $(BUILDDIR)/zlib.cmxa
+$(BUILDDIR)/mlzlib.cmx: mlzlib/mlzlib.ml $(INSTALLDIR)/zlib.cmxa | $(BUILDDIR)
 	$(OCAMLOPT) $(strip \
-		-c $(OCAMLOPTFLAGS) -o $@ -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) $<)
+		-c $(OCAMLOPTFLAGS) -o $@ $(OCAML_BUILDDIR_FLAGS) $(OCAML_INCLUDE_FLAGS) $<)
 
-$(and $(OCAMLC),$(BUILDDIR)/zlib.cma) \
-$(and $(OCAMLOPT),$(BUILDDIR)/zlib.cmxa) \
-&: ../source/zlib*
+$(ZLIB_WORLD)&: ../source/zlib*
 	$(MAKE) $(strip \
 		-C ../source install \
 		BUILDDIR=$(abspath $(ZLIB_BUILDDIR)) \
-		INSTALLDIR=$(abspath $(BUILDDIR)) \
+		INSTALLDIR=$(abspath $(INSTALLDIR)) \
 		ASSERT=$(ASSERT) \
 		SUPPORT_COMPARISON=$(SUPPORT_COMPARISON))
 
+$(BUILDDIR):
+	mkdir -p $@
+
 $(BINLN):
 	ln -s $(BUILDDIR) $@
+
+world: $(ZLIB_WORLD)
 
 check: all $(TESTS)
 
@@ -109,15 +124,16 @@ $(TESTS): % \
 	$(and $(OCAMLC),$<)
 	$(and $(OCAMLOPT),$(BUILDDIR)/$*.opt.exe)
 
-interactive: $(BUILDDIR)/zlib.cma
-	$(RLWRAP) ocaml $(strip -I $(BUILDDIR) $(OCAML_INCLUDE_FLAGS) zlib.cma)
+interactive: $(INSTALLDIR)/zlib.cma
+	$(RLWRAP) ocaml $(strip \
+		$(OCAML_BUILDDIR_FLAGS) $(OCAML_INCLUDE_FLAGS) $(notdir $^))
 
 clean:
 	-$(and $(BINLN),[ -h "$(BINLN)" ] && rm "$(BINLN)")
 	-$(MAKE) $(strip \
-		-C ../source clean uninstall \
+		-C ../source clean $(and $(filter $(BUILDDIR),$(INSTALLDIR)),uninstall) \
 		BUILDDIR=$(abspath $(ZLIB_BUILDDIR)) \
-		INSTALLDIR=$(abspath $(BUILDDIR)))
+		$(addprefix INSTALLDIR=,$(abspath $(filter $(BUILDDIR),$(INSTALLDIR)))))
 	-rm $(BUILDDIR)/*.exe $(BUILDDIR)/*.cm? $(BUILDDIR)/*.o
-	-rmdir $(BUILDDIR)/stublibs
+	-$(patsubst %,rmdir %/stublibs,$(filter $(BUILDDIR),$(INSTALLDIR)))
 	-rmdir $(BUILDDIR)
