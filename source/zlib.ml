@@ -1,7 +1,7 @@
 external zlib_get_version_string: unit -> string =
 	"mlzlib_get_version_string";;
 
-type flush =
+type z_flush =
 	| Z_NO_FLUSH (* 0 *)
 	| Z_PARTIAL_FLUSH (* 1 *)
 	| Z_SYNC_FLUSH (* 2 *)
@@ -15,7 +15,7 @@ let z_best_speed = 1;;
 let z_best_compression = 9;;
 let z_default_compression = -1;;
 
-type strategy = [
+type z_strategy = [
 	| `DEFAULT_STRATEGY
 	| `FILTERED
 	| `HUFFMAN_ONLY
@@ -25,7 +25,7 @@ type strategy = [
 
 type z_stream_s;;
 
-type fields = {
+type z_fields = {
 	mutable next_in: string;
 	mutable next_in_offset: int;
 	mutable avail_in: int;
@@ -36,18 +36,20 @@ type fields = {
 
 external ended: z_stream_s -> bool = "mlzlib_ended";;
 
-external deflate_init: int -> strategy -> int -> z_stream_s =
+external deflate_init: int -> z_strategy -> int -> z_stream_s =
 	"mlzlib_deflate_init";;
-external deflate: z_stream_s -> fields -> flush -> bool = "mlzlib_deflate";;
+external deflate: z_stream_s -> z_fields -> z_flush -> bool =
+	"mlzlib_deflate";;
 external deflate_end: z_stream_s -> unit = "mlzlib_deflate_end";;
 
 external inflate_init: int -> z_stream_s = "mlzlib_inflate_init";;
-external inflate: z_stream_s -> fields -> flush -> bool = "mlzlib_inflate";;
+external inflate: z_stream_s -> z_fields -> z_flush -> bool =
+	"mlzlib_inflate";;
 external inflate_end: z_stream_s -> unit = "mlzlib_inflate_end";;
 
-type header = [`default | `raw | `gzip];;
+type z_header = [`default | `raw | `gzip];;
 
-let window_bits_of_header (header: [< header | `auto]) = (
+let window_bits_of_header (header: [< z_header | `auto]) = (
 	match header with
 	| `default -> 15
 	| `raw -> -15
@@ -67,15 +69,15 @@ let init_fields_out () = (
 	}
 );;
 
-let reset_next_out (fields: fields) = (
+let reset_next_out (fields: z_fields) = (
 	fields.next_out_offset <- 0;
 	let next_out_length = Bytes.length fields.next_out in
 	fields.next_out <- Bytes.create next_out_length;
 	fields.avail_out <- next_out_length
 );;
 
-let make_out: (z_stream_s -> fields -> flush -> bool) ->
-	z_stream_s * fields * bool ref * (string -> int -> int -> unit) -> string ->
+let make_out: (z_stream_s -> z_fields -> z_flush -> bool) ->
+	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit) -> string ->
 	int -> int -> int =
 	let rec loop translate_f o len rest = (
 		if rest = 0 then len else
@@ -100,9 +102,9 @@ let make_out: (z_stream_s -> fields -> flush -> bool) ->
 	assert (used = fields.next_in_offset - pos);
 	used;;
 
-let make_end_out: (z_stream_s -> fields -> flush -> bool) ->
+let make_end_out: (z_stream_s -> z_fields -> z_flush -> bool) ->
 	(z_stream_s -> unit) ->
-	z_stream_s * fields * bool ref * (string -> int -> int -> unit) -> unit =
+	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit) -> unit =
 	let rec loop translate_f end_f o = (
 		let stream, fields, stream_end_ref, output = o in
 		match translate_f stream fields Z_FINISH  with
@@ -132,10 +134,10 @@ let make_end_out: (z_stream_s -> fields -> flush -> bool) ->
 	);;
 
 type out_deflater =
-	z_stream_s * fields * bool ref * (string -> int -> int -> unit);;
+	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit);;
 
 let deflate_init_out ?(level: int = z_default_compression)
-	?(strategy: strategy = `DEFAULT_STRATEGY) ?(header: header = `default)
+	?(strategy: z_strategy = `DEFAULT_STRATEGY) ?(header: z_header = `default)
 	(output: string -> int -> int -> unit) =
 (
 	let window_bits = window_bits_of_header header in
@@ -169,7 +171,7 @@ let deflate_output_string (od: out_deflater) (s: string) = (
 
 let deflate_flush
 	(_, fields, _, output:
-		z_stream_s * fields * bool ref * (string -> int -> int -> unit)
+		z_stream_s * z_fields * bool ref * (string -> int -> int -> unit)
 	) =
 (
 	if fields.next_out_offset > 0 then (
@@ -180,9 +182,9 @@ let deflate_flush
 
 let deflate_end_out = make_end_out deflate deflate_end;;
 
-type in_inflater = z_stream_s * fields * (bytes -> int -> int -> int);;
+type in_inflater = z_stream_s * z_fields * (bytes -> int -> int -> int);;
 
-let inflate_init_in ?(header: [header | `auto] = `auto)
+let inflate_init_in ?(header: [z_header | `auto] = `auto)
 	(input: bytes -> int -> int -> int) =
 (
 	let window_bits = window_bits_of_header header in
@@ -243,9 +245,9 @@ let inflate_end_in (stream, fields, _: in_inflater) = (
 );;
 
 type out_inflater =
-	z_stream_s * fields * bool ref * (string -> int -> int -> unit);;
+	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit);;
 
-let inflate_init_out ?(header: [header | `auto] = `auto)
+let inflate_init_out ?(header: [z_header | `auto] = `auto)
 	(output: string -> int -> int -> unit) =
 (
 	let window_bits = window_bits_of_header header in
@@ -267,7 +269,7 @@ let inflate_end_out = make_end_out inflate inflate_end;;
 
 let is_inflated_out
 	(_, _, stream_end_ref, _:
-		z_stream_s * fields * bool ref * (string -> int -> int -> unit)
+		z_stream_s * z_fields * bool ref * (string -> int -> int -> unit)
 	) =
 (
 	!stream_end_ref

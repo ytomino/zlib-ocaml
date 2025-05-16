@@ -5,7 +5,7 @@ val z_best_speed: int
 val z_best_compression: int
 val z_default_compression: int
 
-type strategy = [
+type z_strategy = [
 	| `DEFAULT_STRATEGY
 	| `FILTERED
 	| `HUFFMAN_ONLY
@@ -13,11 +13,11 @@ type strategy = [
 	| `FIXED
 ]
 
-type header = [`default | `raw | `gzip]
+type z_header = [`default | `raw | `gzip]
 
 type out_deflater
 
-val deflate_init_out: ?level: int -> ?strategy: strategy -> ?header: header ->
+val deflate_init_out: ?level:int -> ?strategy:z_strategy -> ?header:z_header ->
 	(string -> int -> int -> unit) -> out_deflater
 val deflate_out: out_deflater -> string -> int -> int -> int
 val deflate_output_substring: out_deflater -> string -> int -> int -> unit
@@ -27,14 +27,14 @@ val deflate_end_out: out_deflater -> unit
 
 type in_inflater
 
-val inflate_init_in: ?header: [header | `auto] ->
+val inflate_init_in: ?header:[z_header | `auto] ->
 	(bytes -> int -> int -> int) -> in_inflater
 val inflate_in: in_inflater -> bytes -> int -> int -> int
 val inflate_end_in: in_inflater -> unit
 
 type out_inflater
 
-val inflate_init_out: ?header: [header | `auto] ->
+val inflate_init_out: ?header:[z_header | `auto] ->
 	(string -> int -> int -> unit) -> out_inflater
 val inflate_out: out_inflater -> string -> int -> int -> int
 val inflate_flush: out_inflater -> unit

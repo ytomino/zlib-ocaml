@@ -1,4 +1,4 @@
-(* Zlib.strategy *)
+(* Zlib.z_strategy *)
 
 let check_strategy strategy = (
 	try
