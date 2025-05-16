@@ -10,8 +10,6 @@ type flush =
 	| Z_BLOCK (* 5 *)
 	[@@ocaml.warning "-37"];; (* suppress "Unused constructor." *)
 
-type level = int;;
-
 let z_no_compression = 0;;
 let z_best_speed = 1;;
 let z_best_compression = 9;;

@@ -1,7 +1,5 @@
 external zlib_get_version_string: unit -> string = "mlzlib_get_version_string"
 
-type level = int
-
 val z_no_compression: int
 val z_best_speed: int
 val z_best_compression: int
