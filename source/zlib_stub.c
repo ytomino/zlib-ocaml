@@ -241,8 +241,8 @@ CAMLprim value mlzlib_deflate_close(value val_stream)
 	if(stream->zalloc != NULL){
 		unset_fields(stream);
 		int err = deflateEnd(stream);
-		if(err != Z_OK) zlib_raise(err);
 		stream->zalloc = NULL;
+		if(err != Z_OK) zlib_raise(err);
 	}
 	CAMLreturn(Val_unit);
 }
@@ -326,8 +326,8 @@ CAMLprim value mlzlib_inflate_close(value val_stream)
 	if(stream->zalloc != NULL){
 		unset_fields(stream);
 		int err = inflateEnd(stream);
-		if(err != Z_OK) zlib_raise(err);
 		stream->zalloc = NULL;
+		if(err != Z_OK) zlib_raise(err);
 	}
 	CAMLreturn(Val_unit);
 }
