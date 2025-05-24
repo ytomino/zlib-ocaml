@@ -34,28 +34,22 @@ type z_fields = {
 	mutable avail_out: int
 };;
 
+type z_header = [`default | `raw | `gzip];;
+
 external closed: z_stream_s -> bool = "mlzlib_closed";;
 
-external deflate_init: int -> z_strategy -> int -> z_stream_s =
+external deflate_init: level:int -> strategy:z_strategy -> header:z_header ->
+	unit -> z_stream_s =
 	"mlzlib_deflate_init";;
 external deflate: z_stream_s -> z_fields -> z_flush -> [> `ended | `ok] =
 	"mlzlib_deflate";;
 external deflate_close: z_stream_s -> unit = "mlzlib_deflate_close";;
 
-external inflate_init: int -> z_stream_s = "mlzlib_inflate_init";;
+external inflate_init: header:[z_header | `auto] -> unit -> z_stream_s =
+	"mlzlib_inflate_init";;
 external inflate: z_stream_s -> z_fields -> z_flush -> [> `ended | `ok] =
 	"mlzlib_inflate";;
 external inflate_close: z_stream_s -> unit = "mlzlib_inflate_close";;
-
-type z_header = [`default | `raw | `gzip];;
-
-let window_bits_of_header (header: [< z_header | `auto]) = (
-	match header with
-	| `default -> 15
-	| `raw -> -15
-	| `gzip -> 31
-	| `auto -> 47
-);;
 
 let init_fields_out () = (
 	let next_out = Bytes.create (1 lsl 15) in
@@ -143,8 +137,7 @@ let deflate_init_out ?(level: int = z_default_compression)
 	?(strategy: z_strategy = `DEFAULT_STRATEGY) ?(header: z_header = `default)
 	(output: string -> int -> int -> unit) =
 (
-	let window_bits = window_bits_of_header header in
-	let stream = deflate_init level strategy window_bits in
+	let stream = deflate_init ~level ~strategy ~header () in
 	stream, init_fields_out (), ref false, output
 );;
 
@@ -190,8 +183,7 @@ type in_inflater = z_stream_s * z_fields * (bytes -> int -> int -> int);;
 let inflate_init_in ?(header: [z_header | `auto] = `auto)
 	(input: bytes -> int -> int -> int) =
 (
-	let window_bits = window_bits_of_header header in
-	let stream = inflate_init window_bits in
+	let stream = inflate_init ~header () in
 	let next_in = Bytes.unsafe_to_string (Bytes.create (1 lsl 15)) in
 	let fields = {
 		next_in;
@@ -256,8 +248,7 @@ type out_inflater =
 let inflate_init_out ?(header: [z_header | `auto] = `auto)
 	(output: string -> int -> int -> unit) =
 (
-	let window_bits = window_bits_of_header header in
-	let stream = inflate_init window_bits in
+	let stream = inflate_init ~header () in
 	stream, init_fields_out (), ref false, output
 );;
 

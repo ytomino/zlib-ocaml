@@ -62,6 +62,22 @@ static inline int Strategy_val(value v)
 	}
 }
 
+static inline int windowBits_of_Header_val(value v)
+{
+	switch(v){
+	case 0x3787b183:
+		return 15; /* default */
+	case 0x00adabd1:
+		return -15; /* raw */
+	case -0x771c2e4b: /* 0x88e3d1b5 */
+		return 31; /* gzip */
+	case -0x7F124121: /* 0x80edbedf */
+		return 47; /* auto, only inflating */
+	default:
+		caml_failwith(__FUNCTION__);
+	}
+}
+
 /* fields */
 
 static void unset_fields(struct z_stream_s *stream)
@@ -171,9 +187,9 @@ static struct custom_operations deflate_ops = {
 	.deserialize = custom_deserialize_default};
 
 CAMLprim value mlzlib_deflate_init(
-	value val_level, value val_strategy, value val_window_bits)
+	value val_level, value val_strategy, value val_header, value val_unit)
 {
-	CAMLparam3(val_level, val_strategy, val_window_bits);
+	CAMLparam4(val_level, val_strategy, val_header, val_unit);
 	CAMLlocal1(val_result);
 	val_result = caml_alloc_custom(&deflate_ops, sizeof(void *), 0, 1);
 	struct z_stream_s **pstream = pZstreams_val(val_result);
@@ -187,7 +203,7 @@ CAMLprim value mlzlib_deflate_init(
 		stream,
 		Int_val(val_level),
 		Z_DEFLATED,
-		Int_val(val_window_bits),
+		windowBits_of_Header_val(val_header),
 		8,
 		Strategy_val(val_strategy));
 	if(err != Z_OK) zlib_raise(err);
@@ -260,9 +276,9 @@ static struct custom_operations inflate_ops = {
 	.serialize = custom_serialize_default,
 	.deserialize = custom_deserialize_default};
 
-CAMLprim value mlzlib_inflate_init(value val_window_bits)
+CAMLprim value mlzlib_inflate_init(value val_header, value val_unit)
 {
-	CAMLparam1(val_window_bits);
+	CAMLparam2(val_header, val_unit);
 	CAMLlocal1(val_result);
 	val_result = caml_alloc_custom(&inflate_ops, sizeof(void *), 0, 1);
 	struct z_stream_s **pstream = pZstreams_val(val_result);
@@ -274,7 +290,7 @@ CAMLprim value mlzlib_inflate_init(value val_window_bits)
 	stream->opaque = NULL;
 	stream->next_in = NULL;
 	stream->avail_in = 0;
-	int err = inflateInit2(stream, Int_val(val_window_bits));
+	int err = inflateInit2(stream, windowBits_of_Header_val(val_header));
 	if(err != Z_OK) zlib_raise(err);
 	/* zalloc is used to determine the valid status. */
 	if(stream->zalloc == NULL) caml_failwith(__FUNCTION__);
