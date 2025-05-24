@@ -37,19 +37,23 @@ type z_header = [`default | `raw | `gzip];;
 
 external closed: z_stream_s -> bool = "mlzlib_closed";;
 
+type z_stream_deflate = z_stream_s;;
+
 external deflate_init: level:int -> strategy:z_strategy -> header:z_header ->
-	unit -> z_stream_s =
+	unit -> z_stream_deflate =
 	"mlzlib_deflate_init";;
-external deflate: z_stream_s -> z_fields -> [z_flush | `PARTIAL_FLUSH] ->
+external deflate: z_stream_deflate -> z_fields -> [z_flush | `PARTIAL_FLUSH] ->
 	[> `ended | `ok] =
 	"mlzlib_deflate";;
-external deflate_close: z_stream_s -> unit = "mlzlib_deflate_close";;
+external deflate_close: z_stream_deflate -> unit = "mlzlib_deflate_close";;
 
-external inflate_init: header:[z_header | `auto] -> unit -> z_stream_s =
+type z_stream_inflate = z_stream_s;;
+
+external inflate_init: header:[z_header | `auto] -> unit -> z_stream_inflate =
 	"mlzlib_inflate_init";;
-external inflate: z_stream_s -> z_fields -> z_flush -> [> `ended | `ok] =
+external inflate: z_stream_inflate -> z_fields -> z_flush -> [> `ended | `ok] =
 	"mlzlib_inflate";;
-external inflate_close: z_stream_s -> unit = "mlzlib_inflate_close";;
+external inflate_close: z_stream_inflate -> unit = "mlzlib_inflate_close";;
 
 let init_fields_out () = (
 	let next_out = Bytes.create (1 lsl 15) in
@@ -101,6 +105,16 @@ let make_out:
 	assert (used = fields.next_in_offset - pos);
 	used;;
 
+let _flush (type t)
+	(_, fields, _, output: t * z_fields * bool ref * (string -> int -> int -> unit)
+	) =
+(
+	if fields.next_out_offset > 0 then (
+		output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset;
+		reset_next_out fields
+	)
+);;
+
 let make_end_out:
 	(z_stream_s -> z_fields -> [< z_flush | `PARTIAL_FLUSH > `FINISH] ->
 		[`ended | `ok]
@@ -137,7 +151,7 @@ let make_end_out:
 	);;
 
 type out_deflater =
-	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit);;
+	z_stream_deflate * z_fields * bool ref * (string -> int -> int -> unit);;
 
 let deflate_init_out ?(level: int = z_default_compression)
 	?(strategy: z_strategy = `DEFAULT_STRATEGY) ?(header: z_header = `default)
@@ -171,20 +185,11 @@ let deflate_output_string (od: out_deflater) (s: string) = (
 	if r <> len then failwith "Zlib.deflate_output_string" (* __FUNCTION__ *)
 );;
 
-let deflate_flush
-	(_, fields, _, output:
-		z_stream_s * z_fields * bool ref * (string -> int -> int -> unit)
-	) =
-(
-	if fields.next_out_offset > 0 then (
-		output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset;
-		reset_next_out fields
-	)
-);;
+let deflate_flush = _flush;;
 
 let deflate_end_out = make_end_out deflate deflate_close;;
 
-type in_inflater = z_stream_s * z_fields * (bytes -> int -> int -> int);;
+type in_inflater = z_stream_inflate * z_fields * (bytes -> int -> int -> int);;
 
 let inflate_init_in ?(header: [z_header | `auto] = `auto)
 	(input: bytes -> int -> int -> int) =
@@ -242,14 +247,15 @@ let inflate_in (ii: in_inflater) (s: bytes) (pos: int) (len: int) = (
 	else invalid_arg "Zlib.inflate_in" (* __FUNCTION__ *)
 );;
 
-let inflate_end_in (stream, fields, _: in_inflater) = (
+let inflate_end_in (ii: in_inflater) = (
+	let stream, fields, _ = ii in
 	fields.next_out <- Bytes.empty;
 	fields.avail_out <- 0;
 	inflate_close stream
 );;
 
 type out_inflater =
-	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit);;
+	z_stream_inflate * z_fields * bool ref * (string -> int -> int -> unit);;
 
 let inflate_init_out ?(header: [z_header | `auto] = `auto)
 	(output: string -> int -> int -> unit) =
@@ -266,15 +272,12 @@ let inflate_out (oi: out_inflater) (s: string) (pos: int) (len: int) = (
 	else invalid_arg "Zlib.inflate_out" (* __FUNCTION__ *)
 );;
 
-let inflate_flush = deflate_flush;;
+let inflate_flush = _flush;;
 
 let inflate_end_out = make_end_out inflate inflate_close;;
 
-let is_inflated_out
-	(_, _, stream_end_ref, _:
-		z_stream_s * z_fields * bool ref * (string -> int -> int -> unit)
-	) =
-(
+let is_inflated_out (oi: out_inflater) = (
+	let _, _, stream_end_ref, _ = oi in
 	!stream_end_ref
 );;
 
