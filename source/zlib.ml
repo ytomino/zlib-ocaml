@@ -34,18 +34,18 @@ type z_fields = {
 	mutable avail_out: int
 };;
 
-external ended: z_stream_s -> bool = "mlzlib_ended";;
+external closed: z_stream_s -> bool = "mlzlib_closed";;
 
 external deflate_init: int -> z_strategy -> int -> z_stream_s =
 	"mlzlib_deflate_init";;
 external deflate: z_stream_s -> z_fields -> z_flush -> [> `ended | `ok] =
 	"mlzlib_deflate";;
-external deflate_end: z_stream_s -> unit = "mlzlib_deflate_end";;
+external deflate_close: z_stream_s -> unit = "mlzlib_deflate_close";;
 
 external inflate_init: int -> z_stream_s = "mlzlib_inflate_init";;
 external inflate: z_stream_s -> z_fields -> z_flush -> [> `ended | `ok] =
 	"mlzlib_inflate";;
-external inflate_end: z_stream_s -> unit = "mlzlib_inflate_end";;
+external inflate_close: z_stream_s -> unit = "mlzlib_inflate_close";;
 
 type z_header = [`default | `raw | `gzip];;
 
@@ -107,7 +107,7 @@ let make_out: (z_stream_s -> z_fields -> z_flush -> [`ended | `ok]) ->
 let make_end_out: (z_stream_s -> z_fields -> z_flush -> [`ended | `ok]) ->
 	(z_stream_s -> unit) ->
 	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit) -> unit =
-	let rec loop translate_f end_f o = (
+	let rec loop translate_f close_f o = (
 		let stream, fields, stream_end_ref, output = o in
 		match translate_f stream fields `FINISH  with
 		| _ as translated ->
@@ -117,23 +117,23 @@ let make_end_out: (z_stream_s -> z_fields -> z_flush -> [`ended | `ok]) ->
 			begin match translated with
 			| `ended ->
 				stream_end_ref := true;
-				end_f stream
+				close_f stream
 			| `ok ->
 				if fields.next_out_offset > 0 then (
 					reset_next_out fields
 				);
-				loop translate_f end_f o
+				loop translate_f close_f o
 			end
 		| exception (Failure _ as exn) ->
-			end_f stream;
+			close_f stream;
 			raise exn
 	) in
-	fun translate_f end_f o ->
+	fun translate_f close_f o ->
 	let stream, fields, _, _ = o in
-	if not (ended stream) then (
+	if not (closed stream) then (
 		fields.next_in <- "";
 		fields.avail_in <- 0;
-		loop translate_f end_f o
+		loop translate_f close_f o
 	);;
 
 type out_deflater =
@@ -183,7 +183,7 @@ let deflate_flush
 	)
 );;
 
-let deflate_end_out = make_end_out deflate deflate_end;;
+let deflate_end_out = make_end_out deflate deflate_close;;
 
 type in_inflater = z_stream_s * z_fields * (bytes -> int -> int -> int);;
 
@@ -247,7 +247,7 @@ let inflate_in (ii: in_inflater) (s: bytes) (pos: int) (len: int) = (
 let inflate_end_in (stream, fields, _: in_inflater) = (
 	fields.next_out <- Bytes.empty;
 	fields.avail_out <- 0;
-	inflate_end stream
+	inflate_close stream
 );;
 
 type out_inflater =
@@ -271,7 +271,7 @@ let inflate_out (oi: out_inflater) (s: string) (pos: int) (len: int) = (
 
 let inflate_flush = deflate_flush;;
 
-let inflate_end_out = make_end_out inflate inflate_end;;
+let inflate_end_out = make_end_out inflate inflate_close;;
 
 let is_inflated_out
 	(_, _, stream_end_ref, _:

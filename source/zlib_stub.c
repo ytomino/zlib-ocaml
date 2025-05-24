@@ -133,7 +133,7 @@ CAMLprim value mlzlib_get_version_string(value val_unit)
 
 /* internal functions */
 
-CAMLprim value mlzlib_ended(value val_stream)
+CAMLprim value mlzlib_closed(value val_stream)
 {
 	CAMLparam1(val_stream);
 	struct z_stream_s *stream = *pZstreams_val(val_stream);
@@ -218,7 +218,7 @@ CAMLprim value mlzlib_deflate(
 	CAMLreturn(val_result);
 }
 
-CAMLprim value mlzlib_deflate_end(value val_stream)
+CAMLprim value mlzlib_deflate_close(value val_stream)
 {
 	CAMLparam1(val_stream);
 	struct z_stream_s *stream = *pZstreams_val(val_stream);
@@ -303,7 +303,7 @@ CAMLprim value mlzlib_inflate(
 	CAMLreturn(val_result);
 }
 
-CAMLprim value mlzlib_inflate_end(value val_stream)
+CAMLprim value mlzlib_inflate_close(value val_stream)
 {
 	CAMLparam1(val_stream);
 	struct z_stream_s *stream = *pZstreams_val(val_stream);
