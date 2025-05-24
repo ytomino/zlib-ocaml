@@ -30,7 +30,7 @@ static inline int Flush_val(value v)
 	case 0x7dde99cd:
 		return Z_NO_FLUSH;
 	case -0x423467f3: /* 0xbdcb980d */
-		return Z_PARTIAL_FLUSH;
+		return Z_PARTIAL_FLUSH; /* only deflating */
 	case -0x0bffcaff: /* 0xf4003501 */
 		return Z_SYNC_FLUSH;
 	case -0x2362ae97: /* 0xdc9d5169 */

@@ -3,7 +3,6 @@ external zlib_get_version_string: unit -> string =
 
 type z_flush = [
 	| `NO_FLUSH
-	| `PARTIAL_FLUSH
 	| `SYNC_FLUSH
 	| `FULL_FLUSH
 	| `FINISH
@@ -41,7 +40,8 @@ external closed: z_stream_s -> bool = "mlzlib_closed";;
 external deflate_init: level:int -> strategy:z_strategy -> header:z_header ->
 	unit -> z_stream_s =
 	"mlzlib_deflate_init";;
-external deflate: z_stream_s -> z_fields -> z_flush -> [> `ended | `ok] =
+external deflate: z_stream_s -> z_fields -> [z_flush | `PARTIAL_FLUSH] ->
+	[> `ended | `ok] =
 	"mlzlib_deflate";;
 external deflate_close: z_stream_s -> unit = "mlzlib_deflate_close";;
 
@@ -70,7 +70,10 @@ let reset_next_out (fields: z_fields) = (
 	fields.avail_out <- next_out_length
 );;
 
-let make_out: (z_stream_s -> z_fields -> z_flush -> [`ended | `ok]) ->
+let make_out:
+	(z_stream_s -> z_fields -> [< z_flush | `PARTIAL_FLUSH > `NO_FLUSH] ->
+		[`ended | `ok]
+	) ->
 	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit) -> string ->
 	int -> int -> int =
 	let rec loop translate_f o len rest = (
@@ -98,7 +101,10 @@ let make_out: (z_stream_s -> z_fields -> z_flush -> [`ended | `ok]) ->
 	assert (used = fields.next_in_offset - pos);
 	used;;
 
-let make_end_out: (z_stream_s -> z_fields -> z_flush -> [`ended | `ok]) ->
+let make_end_out:
+	(z_stream_s -> z_fields -> [< z_flush | `PARTIAL_FLUSH > `FINISH] ->
+		[`ended | `ok]
+	) ->
 	(z_stream_s -> unit) ->
 	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit) -> unit =
 	let rec loop translate_f close_f o = (
