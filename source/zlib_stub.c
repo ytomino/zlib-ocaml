@@ -17,6 +17,8 @@ __attribute__((noreturn)) static void zlib_raise(int code)
 	}
 }
 
+/* polymorphic variants */
+
 static inline int Strategy_val(value v)
 {
 	switch(v){
@@ -35,10 +37,7 @@ static inline int Strategy_val(value v)
 	}
 }
 
-static inline struct z_stream_s **pZstreams_val(value v)
-{
-	return (struct z_stream_s **)(Data_custom_val(v));
-}
+/* fields */
 
 static void unset_fields(struct z_stream_s *stream)
 {
@@ -68,6 +67,13 @@ static void get_fields(value val_fields, struct z_stream_s const *stream)
 		stream->next_out - (Bytef *)Bytes_val(Field(val_fields, 3));
 	Store_field(val_fields, 4, Val_long(next_out_offset));
 	Store_field(val_fields, 5, Val_long(stream->avail_out));
+}
+
+/* custom data */
+
+static inline struct z_stream_s **pZstreams_val(value v)
+{
+	return (struct z_stream_s **)(Data_custom_val(v));
 }
 
 #if defined(SUPPORT_COMPARISON)
