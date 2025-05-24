@@ -33,6 +33,18 @@ type z_fields = {
 	mutable avail_out: int
 };;
 
+let valid_in (fields: z_fields) = (
+	let {next_in; next_in_offset; avail_in; _} = fields in
+	next_in_offset >= 0 && avail_in >= 0
+	&& avail_in <= String.length next_in - next_in_offset
+);;
+
+let valid_out (fields: z_fields) = (
+	let {next_out; next_out_offset; avail_out; _} = fields in
+	next_out_offset >= 0 && avail_out >= 0
+	&& avail_out <= Bytes.length next_out - next_out_offset
+);;
+
 type z_header = [`default | `raw | `gzip];;
 
 external closed: z_stream_s -> bool = "mlzlib_closed";;
@@ -42,17 +54,36 @@ type z_stream_deflate = z_stream_s;;
 external deflate_init: level:int -> strategy:z_strategy -> header:z_header ->
 	unit -> z_stream_deflate =
 	"mlzlib_deflate_init";;
-external deflate: z_stream_deflate -> z_fields -> [z_flush | `PARTIAL_FLUSH] ->
-	[> `ended | `ok] =
+
+external unsafe_deflate: z_stream_deflate -> z_fields ->
+	[z_flush | `PARTIAL_FLUSH] -> [> `ended | `ok] =
 	"mlzlib_deflate";;
+
+let deflate (stream: z_stream_deflate) (fields: z_fields)
+	(flush: [z_flush | `PARTIAL_FLUSH]) =
+(
+	if valid_in fields && valid_out fields
+	then unsafe_deflate stream fields flush
+	else invalid_arg "Zlib.deflate" (* __FUNCTION__ *)
+);;
+
 external deflate_close: z_stream_deflate -> unit = "mlzlib_deflate_close";;
 
 type z_stream_inflate = z_stream_s;;
 
 external inflate_init: header:[z_header | `auto] -> unit -> z_stream_inflate =
 	"mlzlib_inflate_init";;
-external inflate: z_stream_inflate -> z_fields -> z_flush -> [> `ended | `ok] =
+
+external unsafe_inflate: z_stream_inflate -> z_fields -> z_flush ->
+	[> `ended | `ok] =
 	"mlzlib_inflate";;
+
+let inflate (stream: z_stream_inflate) (fields: z_fields) (flush: z_flush) = (
+	if valid_in fields && valid_out fields
+	then unsafe_inflate stream fields flush
+	else invalid_arg "Zlib.inflate" (* __FUNCTION__ *)
+);;
+
 external inflate_close: z_stream_inflate -> unit = "mlzlib_inflate_close";;
 
 let init_fields_out () = (
@@ -146,6 +177,7 @@ let make_end_out:
 	let stream, fields, _, _ = o in
 	if not (closed stream) then (
 		fields.next_in <- "";
+		fields.next_in_offset <- 0;
 		fields.avail_in <- 0;
 		loop translate_f close_f o
 	);;

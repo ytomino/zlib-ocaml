@@ -37,17 +37,15 @@ type z_stream_deflate
 external deflate_init: level:int -> strategy:z_strategy -> header:z_header ->
 	unit -> z_stream_deflate =
 	"mlzlib_deflate_init"
-external deflate: z_stream_deflate -> z_fields -> [z_flush | `PARTIAL_FLUSH] ->
-	[> `ended | `ok] =
-	"mlzlib_deflate"
+val deflate: z_stream_deflate -> z_fields -> [z_flush | `PARTIAL_FLUSH] ->
+	[> `ended | `ok]
 external deflate_close: z_stream_deflate -> unit = "mlzlib_deflate_close"
 
 type z_stream_inflate
 
 external inflate_init: header:[z_header | `auto] -> unit -> z_stream_inflate =
 	"mlzlib_inflate_init"
-external inflate: z_stream_inflate -> z_fields -> z_flush -> [> `ended | `ok] =
-	"mlzlib_inflate"
+val inflate: z_stream_inflate -> z_fields -> z_flush -> [> `ended | `ok]
 external inflate_close: z_stream_inflate -> unit = "mlzlib_inflate_close"
 
 type out_deflater
