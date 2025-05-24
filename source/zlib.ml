@@ -1,14 +1,14 @@
 external zlib_get_version_string: unit -> string =
 	"mlzlib_get_version_string";;
 
-type z_flush =
-	| Z_NO_FLUSH (* 0 *)
-	| Z_PARTIAL_FLUSH (* 1 *)
-	| Z_SYNC_FLUSH (* 2 *)
-	| Z_FULL_FLUSH (* 3 *)
-	| Z_FINISH (* 4 *)
-	| Z_BLOCK (* 5 *)
-	[@@ocaml.warning "-37"];; (* suppress "Unused constructor." *)
+type z_flush = [
+	| `NO_FLUSH
+	| `PARTIAL_FLUSH
+	| `SYNC_FLUSH
+	| `FULL_FLUSH
+	| `FINISH
+	| `BLOCK
+];;
 
 let z_no_compression = 0;;
 let z_best_speed = 1;;
@@ -38,12 +38,12 @@ external ended: z_stream_s -> bool = "mlzlib_ended";;
 
 external deflate_init: int -> z_strategy -> int -> z_stream_s =
 	"mlzlib_deflate_init";;
-external deflate: z_stream_s -> z_fields -> z_flush -> bool =
+external deflate: z_stream_s -> z_fields -> z_flush -> [> `ended | `ok] =
 	"mlzlib_deflate";;
 external deflate_end: z_stream_s -> unit = "mlzlib_deflate_end";;
 
 external inflate_init: int -> z_stream_s = "mlzlib_inflate_init";;
-external inflate: z_stream_s -> z_fields -> z_flush -> bool =
+external inflate: z_stream_s -> z_fields -> z_flush -> [> `ended | `ok] =
 	"mlzlib_inflate";;
 external inflate_end: z_stream_s -> unit = "mlzlib_inflate_end";;
 
@@ -76,22 +76,24 @@ let reset_next_out (fields: z_fields) = (
 	fields.avail_out <- next_out_length
 );;
 
-let make_out: (z_stream_s -> z_fields -> z_flush -> bool) ->
+let make_out: (z_stream_s -> z_fields -> z_flush -> [`ended | `ok]) ->
 	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit) -> string ->
 	int -> int -> int =
 	let rec loop translate_f o len rest = (
 		if rest = 0 then len else
 		let stream, fields, stream_end_ref, output = o in
-		let stream_end = translate_f stream fields Z_NO_FLUSH in
+		let translated = translate_f stream fields `NO_FLUSH in
 		if fields.avail_out = 0 then (
 			output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset;
 			reset_next_out fields
 		);
 		let rest = fields.avail_in in
-		if stream_end then (
+		match translated with
+		| `ended ->
 			stream_end_ref := true;
 			len - rest
-		) else loop translate_f o len rest
+		| `ok ->
+			loop translate_f o len rest
 	) in
 	fun translate_f o s pos len ->
 	let _, fields, _, _ = o in
@@ -102,25 +104,26 @@ let make_out: (z_stream_s -> z_fields -> z_flush -> bool) ->
 	assert (used = fields.next_in_offset - pos);
 	used;;
 
-let make_end_out: (z_stream_s -> z_fields -> z_flush -> bool) ->
+let make_end_out: (z_stream_s -> z_fields -> z_flush -> [`ended | `ok]) ->
 	(z_stream_s -> unit) ->
 	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit) -> unit =
 	let rec loop translate_f end_f o = (
 		let stream, fields, stream_end_ref, output = o in
-		match translate_f stream fields Z_FINISH  with
-		| _ as stream_end ->
+		match translate_f stream fields `FINISH  with
+		| _ as translated ->
 			if fields.next_out_offset > 0 then (
 				output (Bytes.unsafe_to_string fields.next_out) 0 fields.next_out_offset
 			);
-			if stream_end then (
+			begin match translated with
+			| `ended ->
 				stream_end_ref := true;
 				end_f stream
-			) else (
+			| `ok ->
 				if fields.next_out_offset > 0 then (
 					reset_next_out fields
 				);
 				loop translate_f end_f o
-			)
+			end
 		| exception (Failure _ as exn) ->
 			end_f stream;
 			raise exn
@@ -218,10 +221,13 @@ let unsafe_inflate_in: in_inflater -> bytes -> int -> int -> int =
 			)
 		then len - rest
 		else
-		let stream_end = inflate stream fields Z_NO_FLUSH in
+		let inflated = inflate stream fields `NO_FLUSH in
 		let rest = fields.avail_out in
-		if stream_end then len - rest
-		else loop ii len rest
+		match inflated with
+		| `ended ->
+			len - rest
+		| `ok ->
+			loop ii len rest
 	) in
 	fun ii s pos len ->
 	let _, fields, _ = ii in

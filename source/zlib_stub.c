@@ -19,6 +19,31 @@ __attribute__((noreturn)) static void zlib_raise(int code)
 
 /* polymorphic variants */
 
+enum {
+	Val_ended = -0x1f0b6e0b, /* 0xe0f491f5 */
+	Val_ok = 0x0000c239
+};
+
+static inline int Flush_val(value v)
+{
+	switch(v){
+	case 0x7dde99cd:
+		return Z_NO_FLUSH;
+	case -0x423467f3: /* 0xbdcb980d */
+		return Z_PARTIAL_FLUSH;
+	case -0x0bffcaff: /* 0xf4003501 */
+		return Z_SYNC_FLUSH;
+	case -0x2362ae97: /* 0xdc9d5169 */
+		return Z_FULL_FLUSH;
+	case 0x7203d8a7:
+		return Z_FINISH;
+	case 0x65d55a5b:
+		return Z_BLOCK;
+	default:
+		caml_failwith(__FUNCTION__);
+	}
+}
+
 static inline int Strategy_val(value v)
 {
 	switch(v){
@@ -175,22 +200,22 @@ CAMLprim value mlzlib_deflate(
 	value val_stream, value val_fields, value val_flush)
 {
 	CAMLparam3(val_stream, val_fields, val_flush);
+	CAMLlocal1(val_result);
 	struct z_stream_s *stream = *pZstreams_val(val_stream);
 	set_fields(stream, val_fields);
-	int err = deflate(stream, Int_val(val_flush));
+	int err = deflate(stream, Flush_val(val_flush));
 	get_fields(val_fields, stream);
-	bool result;
 	switch(err){
 	case Z_OK:
-		result = false;
+		val_result = Val_ok;
 		break;
 	case Z_STREAM_END:
-		result = true;
+		val_result = Val_ended;
 		break;
 	default:
 		zlib_raise(err);
 	}
-	CAMLreturn(Val_bool(result));
+	CAMLreturn(val_result);
 }
 
 CAMLprim value mlzlib_deflate_end(value val_stream)
@@ -260,22 +285,22 @@ CAMLprim value mlzlib_inflate(
 	value val_stream, value val_fields, value val_flush)
 {
 	CAMLparam3(val_stream, val_fields, val_flush);
+	CAMLlocal1(val_result);
 	struct z_stream_s *stream = *pZstreams_val(val_stream);
 	set_fields(stream, val_fields);
-	int err = inflate(stream, Int_val(val_flush));
+	int err = inflate(stream, Flush_val(val_flush));
 	get_fields(val_fields, stream);
-	bool result;
 	switch(err){
 	case Z_OK:
-		result = false;
+		val_result = Val_ok;
 		break;
 	case Z_STREAM_END:
-		result = true;
+		val_result = Val_ended;
 		break;
 	default:
 		zlib_raise(err);
 	}
-	CAMLreturn(Val_bool(result));
+	CAMLreturn(val_result);
 }
 
 CAMLprim value mlzlib_inflate_end(value val_stream)
