@@ -7,10 +7,7 @@ let zlib_deflateInit level = (
 		match level with
 		| Z_DEFAULT_COMPRESSION -> Zlib.z_default_compression
 	in
-	let buffer = Buffer.create 0 in
-	Zlib.deflate_init_out ~level (Buffer.add_substring buffer) ~header:`gzip,
-	buffer,
-	ref false
+	Zlib.deflate_init ~level ~strategy:`DEFAULT_STRATEGY ~header:`gzip ()
 );;
 
 let zlib_inflateInit2 window_bits = (
@@ -22,50 +19,47 @@ let zlib_inflateInit2 window_bits = (
 		| 47 -> `auto
 		| _ -> assert false
 	in
-	let buffer = Buffer.create 0 in
-	Zlib.inflate_init_out ~header (Buffer.add_substring buffer), buffer, ref false
+	Zlib.inflate_init ~header ()
 );;
 
-let zlib_inflateInit () = zlib_inflateInit2 47;;
+let zlib_inflateInit () = Zlib.inflate_init ~header:`auto ();;
 
-let make_deflate_or_inflate_end end_f (writer, (_: Buffer.t), stream_end) = (
-	if not !stream_end then end_f writer
-);;
+let zlib_deflateEnd = Zlib.deflate_close;;
 
-let zlib_deflateEnd = make_deflate_or_inflate_end Zlib.deflate_end_out;;
-
-let zlib_inflateEnd = make_deflate_or_inflate_end Zlib.inflate_end_out;;
+let zlib_inflateEnd = Zlib.inflate_close;;
 
 type z_flush = Z_NO_FLUSH | Z_SYNC_FLUSH | Z_FINISH;;
 
-let make_deflate_or_inflate out_f flush_f end_f completed_f
-	(writer, buffer, stream_end)
-	(flush: z_flush) in_s in_offset in_length out_s out_offset out_length =
+let make_deflate_or_inflate translate_f strm flush in_s in_offset in_length
+	out_s out_offset out_length =
 (
-	let used_in =
-		if !stream_end then 0 else
-		let used_in = out_f writer in_s in_offset in_length in
-		if used_in = 0 && (flush = Z_FINISH || completed_f writer) then (
-			stream_end := true;
-			end_f writer
-		) else flush_f writer;
-		used_in
+	let fields = {
+		Zlib.next_in = in_s;
+		next_in_offset = in_offset;
+		avail_in = in_length;
+		next_out = out_s;
+		next_out_offset = out_offset;
+		avail_out = out_length
+	}
 	in
-	let used_out = min (Buffer.length buffer) out_length in
-	Buffer.blit buffer 0 out_s out_offset used_out;
-	let rest_length = Buffer.length buffer - used_out in
-	let rest = Buffer.sub buffer used_out rest_length in
-	Buffer.clear buffer;
-	Buffer.add_string buffer rest;
-	!stream_end && rest_length = 0, used_in, used_out
+	let flush =
+		match flush with
+		| Z_NO_FLUSH -> `NO_FLUSH
+		| Z_SYNC_FLUSH -> `SYNC_FLUSH
+		| Z_FINISH -> `FINISH
+	in
+	let stream_end =
+		match translate_f strm fields flush with
+		| `ended -> true
+		| `ok -> false
+	in
+	let used_in = in_length - fields.avail_in in
+	let used_out = out_length - fields.avail_out in
+	stream_end, used_in, used_out
 );;
 
-let zlib_deflate =
-	make_deflate_or_inflate Zlib.deflate_out Zlib.deflate_flush
-		Zlib.deflate_end_out (fun _ -> false);;
+let zlib_deflate = make_deflate_or_inflate Zlib.deflate;;
 
-let zlib_inflate =
-	make_deflate_or_inflate Zlib.inflate_out Zlib.inflate_flush
-		Zlib.inflate_end_out Zlib.is_inflated_out;;
+let zlib_inflate = make_deflate_or_inflate Zlib.inflate;;
 
 let crc32 acc s len = Zlib.crc32_substring acc s 0 len;;
