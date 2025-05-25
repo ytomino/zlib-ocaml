@@ -47,8 +47,6 @@ let valid_out (fields: z_fields) = (
 
 type z_header = [`default | `raw | `gzip];;
 
-external closed: z_stream_s -> bool = "mlzlib_closed";;
-
 type z_stream_deflate = z_stream_s;;
 
 external deflate_init: level:int -> strategy:z_strategy -> header:z_header ->
@@ -88,7 +86,7 @@ let inflate (stream: z_stream_inflate) (fields: z_fields)
 
 external inflate_close: z_stream_inflate -> unit = "mlzlib_inflate_close";;
 
-let init_fields_out () = (
+let _init_fields_out () = (
 	let next_out = Bytes.create (1 lsl 15) in
 	{
 		next_in = "";
@@ -107,11 +105,11 @@ let reset_next_out (fields: z_fields) = (
 	fields.avail_out <- next_out_length
 );;
 
-let make_out:
-	(z_stream_s -> z_fields -> [< z_flush | `PARTIAL_FLUSH | `TREES > `NO_FLUSH] ->
+let _make_out: type t.
+	(t -> z_fields -> [< z_flush | `PARTIAL_FLUSH | `TREES > `NO_FLUSH] ->
 		[`ended | `ok]
 	) ->
-	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit) -> string ->
+	t * z_fields * bool ref * (string -> int -> int -> unit) -> string ->
 	int -> int -> int =
 	let rec loop translate_f o len rest = (
 		if rest = 0 then len else
@@ -148,12 +146,12 @@ let _flush (type t)
 	)
 );;
 
-let make_end_out:
-	(z_stream_s -> z_fields -> [< z_flush | `PARTIAL_FLUSH | `TREES > `FINISH] ->
+let _make_close_out: type t.
+	(t -> z_fields -> [< z_flush | `PARTIAL_FLUSH | `TREES > `FINISH] ->
 		[`ended | `ok]
 	) ->
-	(z_stream_s -> unit) ->
-	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit) -> unit =
+	(t -> unit) -> (t -> bool) ->
+	t * z_fields * bool ref * (string -> int -> int -> unit) -> unit =
 	let rec loop translate_f close_f o = (
 		let stream, fields, stream_end_ref, output = o in
 		match translate_f stream fields `FINISH  with
@@ -175,145 +173,14 @@ let make_end_out:
 			close_f stream;
 			raise exn
 	) in
-	fun translate_f close_f o ->
+	fun translate_f close_f closed_f o ->
 	let stream, fields, _, _ = o in
-	if not (closed stream) then (
+	if not (closed_f stream) then (
 		fields.next_in <- "";
 		fields.next_in_offset <- 0;
 		fields.avail_in <- 0;
 		loop translate_f close_f o
 	);;
-
-type out_deflater =
-	z_stream_deflate * z_fields * bool ref * (string -> int -> int -> unit);;
-
-let deflate_init_out ?(level: int = z_default_compression)
-	?(strategy: z_strategy = `DEFAULT_STRATEGY) ?(header: z_header = `default)
-	(output: string -> int -> int -> unit) =
-(
-	let stream = deflate_init ~level ~strategy ~header () in
-	stream, init_fields_out (), ref false, output
-);;
-
-let unsafe_deflate_out = make_out deflate;;
-
-let deflate_out (od: out_deflater) (s: string) (pos: int) (len: int) = (
-	if pos >= 0 && len >= 0 && len <= String.length s - pos
-	then unsafe_deflate_out od s pos len
-	else invalid_arg "Zlib.deflate_out" (* __FUNCTION__ *)
-);;
-
-let deflate_output_substring (od: out_deflater) (s: string) (pos: int)
-	(len: int) =
-(
-	let loc = "Zlib.deflate_output_substring" (* __FUNCTION__ *) in
-	if pos >= 0 && len >= 0 && len <= String.length s - pos then (
-		let r = unsafe_deflate_out od s pos len in
-		if r <> len then failwith loc
-	) else invalid_arg loc
-);;
-
-let deflate_output_string (od: out_deflater) (s: string) = (
-	let len = String.length s in
-	let r = unsafe_deflate_out od s 0 len in
-	if r <> len then failwith "Zlib.deflate_output_string" (* __FUNCTION__ *)
-);;
-
-let deflate_flush = _flush;;
-
-let deflate_end_out = make_end_out deflate deflate_close;;
-
-type in_inflater = z_stream_inflate * z_fields * (bytes -> int -> int -> int);;
-
-let inflate_init_in ?(header: [z_header | `auto] = `auto)
-	(input: bytes -> int -> int -> int) =
-(
-	let stream = inflate_init ~header () in
-	let next_in = Bytes.unsafe_to_string (Bytes.create (1 lsl 15)) in
-	let fields = {
-		next_in;
-		next_in_offset = 0;
-		avail_in = 0;
-		next_out = Bytes.empty;
-		next_out_offset = 0;
-		avail_out = 0
-	}
-	in
-	stream, fields, input
-);;
-
-let unsafe_inflate_in: in_inflater -> bytes -> int -> int -> int =
-	let rec loop ii len rest = (
-		let stream, fields, input = ii in
-		if rest = 0
-			|| (
-				fields.avail_in = 0 && (
-					let rest_in =
-						input (Bytes.unsafe_of_string fields.next_in) 0 (String.length fields.next_in)
-					in
-					fields.next_in_offset <- 0;
-					fields.avail_in <- rest_in;
-					rest_in = 0
-				)
-			)
-		then len - rest
-		else
-		let inflated = inflate stream fields `NO_FLUSH in
-		let rest = fields.avail_out in
-		match inflated with
-		| `ended ->
-			len - rest
-		| `ok ->
-			loop ii len rest
-	) in
-	fun ii s pos len ->
-	let _, fields, _ = ii in
-	fields.next_out <- s;
-	fields.next_out_offset <- pos;
-	fields.avail_out <- len;
-	let used = loop ii len len in
-	assert (used = fields.next_out_offset - pos);
-	used;;
-
-let inflate_in (ii: in_inflater) (s: bytes) (pos: int) (len: int) = (
-	if pos >= 0 && len >= 0 && len <= Bytes.length s - pos
-	then unsafe_inflate_in ii s pos len
-	else invalid_arg "Zlib.inflate_in" (* __FUNCTION__ *)
-);;
-
-let inflate_end_in (ii: in_inflater) = (
-	let stream, fields, _ = ii in
-	fields.next_out <- Bytes.empty;
-	fields.avail_out <- 0;
-	inflate_close stream
-);;
-
-type out_inflater =
-	z_stream_inflate * z_fields * bool ref * (string -> int -> int -> unit);;
-
-let inflate_init_out ?(header: [z_header | `auto] = `auto)
-	(output: string -> int -> int -> unit) =
-(
-	let stream = inflate_init ~header () in
-	stream, init_fields_out (), ref false, output
-);;
-
-let unsafe_inflate_out = make_out inflate;;
-
-let inflate_out (oi: out_inflater) (s: string) (pos: int) (len: int) = (
-	if pos >= 0 && len >= 0 && len <= String.length s - pos
-	then unsafe_inflate_out oi s pos len
-	else invalid_arg "Zlib.inflate_out" (* __FUNCTION__ *)
-);;
-
-let inflate_flush = _flush;;
-
-let inflate_end_out = make_end_out inflate inflate_close;;
-
-let is_inflated_out (oi: out_inflater) = (
-	let _, _, stream_end_ref, _ = oi in
-	!stream_end_ref
-);;
 
 external unsafe_crc32_substring: int32 -> string -> int -> int -> int32 =
 	"mlzlib_unsafe_crc32_substring"
@@ -327,3 +194,7 @@ let crc32_substring (crc: int32) (s: string) (pos: int) (len: int) = (
 let crc32_string (crc: int32) (s: string) = (
 	unsafe_crc32_substring crc s 0 (String.length s)
 );;
+
+module In_inflater = Zlib__In_inflater;;
+module Out_deflater = Zlib__Out_deflater;;
+module Out_inflater = Zlib__Out_inflater;;

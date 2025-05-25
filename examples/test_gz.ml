@@ -25,9 +25,9 @@ let src = read_file "test_gz.ml";; (* this file *)
 
 let gz = (
 	let buf = Buffer.create 1024 in
-	let w = Zlib.deflate_init_out (Buffer.add_substring buf) in
-	Zlib.deflate_output_string w src;
-	Zlib.deflate_end_out w;
+	let w = Zlib.Out_deflater.open_out (Buffer.add_substring buf) in
+	Zlib.Out_deflater.output_string w src;
+	Zlib.Out_deflater.close_out w;
 	Buffer.contents buf
 );;
 
@@ -40,14 +40,14 @@ if verbose then (
 
 let dest = (
 	let buf = Buffer.create 1024 in
-	let r = Zlib.inflate_init_in (read gz (ref 0)) in
+	let r = Zlib.In_inflater.open_in (read gz (ref 0)) in
 	while
 		let s = Bytes.create 1024 in
-		let ri = Zlib.inflate_in r s 0 1024 in
+		let ri = Zlib.In_inflater.input r s 0 1024 in
 		Buffer.add_subbytes buf s 0 ri;
 		ri > 0
 	do () done;
-	Zlib.inflate_end_in r;
+	Zlib.In_inflater.close_in r;
 	Buffer.contents buf
 ) in
 assert (src = dest);;
@@ -56,10 +56,10 @@ assert (src = dest);;
 
 let dest = (
 	let buf = Buffer.create 1024 in
-	let w = Zlib.inflate_init_out (Buffer.add_substring buf) in
-	let used = Zlib.inflate_out w gz 0 (String.length gz) in
+	let w = Zlib.Out_inflater.open_out (Buffer.add_substring buf) in
+	let used = Zlib.Out_inflater.out_substring w gz 0 (String.length gz) in
 	assert (used = String.length gz);
-	Zlib.inflate_end_out w;
+	Zlib.Out_inflater.close_out w;
 	Buffer.contents buf
 ) in
 assert (src = dest);;
@@ -68,9 +68,9 @@ assert (src = dest);;
 
 let gz = (
 	let buf = Buffer.create 1024 in
-	let w = Zlib.deflate_init_out ~header:`gzip (Buffer.add_substring buf) in
-	Zlib.deflate_output_substring w src 0 (String.length src);
-	Zlib.deflate_end_out w;
+	let w = Zlib.Out_deflater.open_out ~header:`gzip (Buffer.add_substring buf) in
+	Zlib.Out_deflater.output_substring w src 0 (String.length src);
+	Zlib.Out_deflater.close_out w;
 	Buffer.contents buf
 );;
 
