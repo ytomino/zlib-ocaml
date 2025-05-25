@@ -79,9 +79,9 @@ let out_txt_name = Filename.temp_file "test-out" ".txt" in
 let f = open_out_bin out_gz_name in
 output_string f gz;
 close_out f;
-ignore (
+let _: int =
 	Sys.command ("gzip -c -d '" ^ out_gz_name ^ "' > '" ^ out_txt_name ^ "'")
-);
+in
 let unzip = read_file out_txt_name in
 assert (unzip = src);
 Sys.remove out_gz_name;
