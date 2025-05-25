@@ -1,4 +1,5 @@
 open Zlib;;
+open Zlib_internalOut;;
 
 external closed: z_stream_inflate -> bool = "mlzlib_closed";;
 
