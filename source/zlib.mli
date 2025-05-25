@@ -55,20 +55,3 @@ val crc32_string: int32 -> string -> int32
 module In_inflater = Zlib__In_inflater
 module Out_deflater = Zlib__Out_deflater
 module Out_inflater = Zlib__Out_inflater
-
-(** {1 For internal use} *)
-
-val _init_fields_out: unit -> z_fields
-val _make_out:
-	('a -> z_fields -> [< z_flush | `PARTIAL_FLUSH | `TREES > `NO_FLUSH] ->
-		[`ended | `ok ]
-	) ->
-	'a * z_fields * bool ref * (string -> int -> int -> unit) -> string ->
-	int -> int -> int
-val _flush: 'a * z_fields * bool ref * (string -> int -> int -> unit) -> unit
-val _make_close_out:
-	('a -> z_fields -> [< z_flush | `PARTIAL_FLUSH | `TREES > `FINISH] ->
-		[`ended | `ok ]
-	) ->
-	('a -> unit) -> ('a -> bool) ->
-	'a * z_fields * bool ref * (string -> int -> int -> unit) -> unit
