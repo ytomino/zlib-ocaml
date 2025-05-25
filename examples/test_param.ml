@@ -39,6 +39,31 @@ assert (check_flush `FULL_FLUSH);
 assert (check_flush `FINISH);
 assert (check_flush `BLOCK);;
 
+let check_flush_inflate flush = (
+	let i = Zlib.inflate_init ~header:`default () in
+	let input = "x\x9cs\x04\x00\x00B\x00B" in (* compressed "A" *)
+	let output = Bytes.create 4096 in
+	let fields = {
+		Zlib.next_in = input;
+		next_in_offset = 0;
+		avail_in = String.length input;
+		next_out = output;
+		next_out_offset = 0;
+		avail_out = Bytes.length output
+	}
+	in
+	let result =
+		try
+			let _: [`ended | `ok] = Zlib.inflate i fields flush in
+			true
+		with
+		| Failure msg -> false
+	in
+	Zlib.inflate_close i;
+	result
+) in
+assert (check_flush_inflate `TREES);;
+
 (* Zlib.z_strategy *)
 
 let check_strategy strategy = (

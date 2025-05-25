@@ -45,7 +45,8 @@ type z_stream_inflate
 
 external inflate_init: header:[z_header | `auto] -> unit -> z_stream_inflate =
 	"mlzlib_inflate_init"
-val inflate: z_stream_inflate -> z_fields -> z_flush -> [> `ended | `ok]
+val inflate: z_stream_inflate -> z_fields -> [z_flush | `TREES] ->
+	[> `ended | `ok]
 external inflate_close: z_stream_inflate -> unit = "mlzlib_inflate_close"
 
 type out_deflater

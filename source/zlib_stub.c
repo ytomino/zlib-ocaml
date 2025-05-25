@@ -39,6 +39,8 @@ static inline int Flush_val(value v)
 		return Z_FINISH;
 	case 0x65d55a5b:
 		return Z_BLOCK;
+	case 0x2821a26b:
+		return Z_TREES; /* only inflating */
 	default:
 		caml_failwith(__FUNCTION__);
 	}

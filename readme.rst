@@ -11,7 +11,7 @@ Prerequisites
 
 OCaml >= 4.11
  https://ocaml.org/
-zlib >= 1.0
+zlib >= 1.2.3.4
  http://www.zlib.net/
 
 How to make

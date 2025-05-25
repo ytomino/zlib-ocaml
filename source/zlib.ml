@@ -74,11 +74,13 @@ type z_stream_inflate = z_stream_s;;
 external inflate_init: header:[z_header | `auto] -> unit -> z_stream_inflate =
 	"mlzlib_inflate_init";;
 
-external unsafe_inflate: z_stream_inflate -> z_fields -> z_flush ->
+external unsafe_inflate: z_stream_inflate -> z_fields -> [z_flush | `TREES] ->
 	[> `ended | `ok] =
 	"mlzlib_inflate";;
 
-let inflate (stream: z_stream_inflate) (fields: z_fields) (flush: z_flush) = (
+let inflate (stream: z_stream_inflate) (fields: z_fields)
+	(flush: [z_flush | `TREES]) =
+(
 	if valid_in fields && valid_out fields
 	then unsafe_inflate stream fields flush
 	else invalid_arg "Zlib.inflate" (* __FUNCTION__ *)
@@ -106,7 +108,7 @@ let reset_next_out (fields: z_fields) = (
 );;
 
 let make_out:
-	(z_stream_s -> z_fields -> [< z_flush | `PARTIAL_FLUSH > `NO_FLUSH] ->
+	(z_stream_s -> z_fields -> [< z_flush | `PARTIAL_FLUSH | `TREES > `NO_FLUSH] ->
 		[`ended | `ok]
 	) ->
 	z_stream_s * z_fields * bool ref * (string -> int -> int -> unit) -> string ->
@@ -147,7 +149,7 @@ let _flush (type t)
 );;
 
 let make_end_out:
-	(z_stream_s -> z_fields -> [< z_flush | `PARTIAL_FLUSH > `FINISH] ->
+	(z_stream_s -> z_fields -> [< z_flush | `PARTIAL_FLUSH | `TREES > `FINISH] ->
 		[`ended | `ok]
 	) ->
 	(z_stream_s -> unit) ->
