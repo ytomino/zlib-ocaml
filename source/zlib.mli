@@ -49,35 +49,26 @@ val inflate: z_stream_inflate -> z_fields -> [z_flush | `TREES] ->
 	[> `ended | `ok]
 external inflate_close: z_stream_inflate -> unit = "mlzlib_inflate_close"
 
-type out_deflater
-
-val deflate_init_out: ?level:int -> ?strategy:z_strategy -> ?header:z_header ->
-	(string -> int -> int -> unit) -> out_deflater
-val deflate_out: out_deflater -> string -> int -> int -> int
-val deflate_output_substring: out_deflater -> string -> int -> int -> unit
-val deflate_output_string: out_deflater -> string -> unit
-val deflate_flush: out_deflater -> unit
-val deflate_end_out: out_deflater -> unit
-
-type in_inflater
-
-val inflate_init_in: ?header:[z_header | `auto] ->
-	(bytes -> int -> int -> int) -> in_inflater
-val inflate_in: in_inflater -> bytes -> int -> int -> int
-val inflate_end_in: in_inflater -> unit
-
-type out_inflater
-
-val inflate_init_out: ?header:[z_header | `auto] ->
-	(string -> int -> int -> unit) -> out_inflater
-val inflate_out: out_inflater -> string -> int -> int -> int
-val inflate_flush: out_inflater -> unit
-val inflate_end_out: out_inflater -> unit
-
-val is_inflated_out: out_inflater -> bool
-(** [true] means the inflating is finished internally.
-    It does not require any more calling of [inflate_out], but the data may be
-    remained, so [inflate_end_out] or [inflate_flush] should be called. *)
-
 val crc32_substring: int32 -> string -> int -> int -> int32
 val crc32_string: int32 -> string -> int32
+
+module In_inflater = Zlib__In_inflater
+module Out_deflater = Zlib__Out_deflater
+module Out_inflater = Zlib__Out_inflater
+
+(** {1 For internal use} *)
+
+val _init_fields_out: unit -> z_fields
+val _make_out:
+	('a -> z_fields -> [< z_flush | `PARTIAL_FLUSH | `TREES > `NO_FLUSH] ->
+		[`ended | `ok ]
+	) ->
+	'a * z_fields * bool ref * (string -> int -> int -> unit) -> string ->
+	int -> int -> int
+val _flush: 'a * z_fields * bool ref * (string -> int -> int -> unit) -> unit
+val _make_close_out:
+	('a -> z_fields -> [< z_flush | `PARTIAL_FLUSH | `TREES > `FINISH] ->
+		[`ended | `ok ]
+	) ->
+	('a -> unit) -> ('a -> bool) ->
+	'a * z_fields * bool ref * (string -> int -> int -> unit) -> unit

@@ -68,7 +68,9 @@ assert (check_flush_inflate `TREES);;
 
 let check_strategy strategy = (
 	try
-		Zlib.deflate_end_out (Zlib.deflate_init_out ~strategy (fun _ _ _ -> ()));
+		Zlib.Out_deflater.close_out (
+			Zlib.Out_deflater.open_out ~strategy (fun _ _ _ -> ())
+		);
 		true
 	with
 	| Failure _ -> false

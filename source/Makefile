@@ -1,7 +1,7 @@
 include Makefile.variables
 
-MLI=zlib.mli
-MLSRC=zlib.ml
+MLI=zlib.mli zlib__In_inflater zlib__Out_deflater zlib__Out_inflater
+MLSRC=$(MLI:.mli=.ml)
 MLINIT=
 CSRC=zlib_stub.c
 
@@ -30,3 +30,13 @@ CCLIB=$(addprefix -cclib ,$(LD_ZLIB))
 LDLIB=$(LD_ZLIB)
 
 include Makefile.rules
+
+$(BUILDDIR)/zlib.cmi $(BUILDDIR)/zlib.cmo $(BUILDDIR)/zlib.cmx \
+: private override OCAMLCFLAGS+=-no-alias-deps -w -49
+$(BUILDDIR)/zlib__In_inflater.cmi $(BUILDDIR)/zlib__In_inflater.cmo \
+$(BUILDDIR)/zlib__Out_deflater.cmi $(BUILDDIR)/zlib__Out_deflater.cmo \
+$(BUILDDIR)/zlib__Out_inflater.cmi $(BUILDDIR)/zlib__Out_inflater.cmo \
+: $(BUILDDIR)/zlib.cmi
+$(BUILDDIR)/zlib__In_inflater.cmx $(BUILDDIR)/zlib__Out_deflater.cmx \
+$(BUILDDIR)/zlib__Out_inflater.cmx \
+: $(BUILDDIR)/zlib.cmx
